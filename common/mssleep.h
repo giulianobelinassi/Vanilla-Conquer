@@ -10,6 +10,8 @@
 #include <winbase.h>
 #elif defined(_WIN32)
 #include <synchapi.h>
+#elif defined(_N64)
+#include <unistd.h>
 #else /* Assuming recent posix*/
 #define __USE_POSIX199309
 #define _POSIX_C_SOURCE 199309L
@@ -23,6 +25,8 @@ static inline void ms_sleep(unsigned ms)
 {
 #ifdef _WIN32
     Sleep(ms);
+#elif defined(_N64)
+	/*  Nothing.  */
 #else
     struct timespec ts;
     ts.tv_sec = ms / 1000;

@@ -48,6 +48,9 @@ void Print_Error_Exit(char* string);
 #include "common/utf.h"
 extern void Create_Main_Window(HANDLE instance, int width, int height);
 HINSTANCE ProgramInstance;
+#elif defined(_N64)
+#include <libdragon.h>
+#define vc_chdir(x) do {} while(0)
 #else
 #include <unistd.h>
 #endif
