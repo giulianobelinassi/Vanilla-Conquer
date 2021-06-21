@@ -52,6 +52,8 @@
  * TMC::Copy_To_In_Buffer -- copy data from our winsock buffer             *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#ifndef _N64
+
 #include "tcpip.h"
 #include "misc.h"
 #include "wwkeyboard.h"
@@ -945,4 +947,5 @@ void TcpipManagerClass::Clear_Socket_Error(SOCKET socket)
     setsockopt(socket, SOL_SOCKET, SO_ERROR, (char*)&error_code, length);
 }
 
+#endif
 #endif

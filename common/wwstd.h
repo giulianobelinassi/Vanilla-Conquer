@@ -257,13 +257,15 @@ inline static void _splitpath(const char* path, char* drive, char* dir, char* fn
         }
     }
 }
-
+/* There is no point for this function be redefined here.  */
+#if 0
 inline static char* strupr(char* str)
 {
     for (int i = 0; i < strlen(str); i++)
         str[i] = toupper(str[i]);
     return str;
 }
+#endif
 
 inline static void strrev(char* str)
 {

@@ -220,6 +220,19 @@ if(BUILD_VANILLATD)
     target_include_directories(VanillaTD PUBLIC ${CMAKE_SOURCE_DIR} .)
     target_link_libraries(VanillaTD commonv ${VANILLA_LIBS} ${STATIC_LIBS})
     set_target_properties(VanillaTD PROPERTIES OUTPUT_NAME vanillatd)
+	if (N64)
+		add_custom_command(TARGET VanillaTD
+						  POST_BUILD
+						  COMMAND ${CMAKE_OBJCOPY} ARGS -O binary ../vanillatd ../vanillatd.bin
+						  VERBATIM)
+		add_custom_command(TARGET VanillaTD
+						  POST_BUILD
+						  COMMAND ${N64_TOOL} ARGS -l 2M -t "${PROJECT_NAME}" -h ${ROM_HEADER} -o ../vanillatd.z64 ../vanillatd.bin )
+		add_custom_command(TARGET VanillaTD
+						  POST_BUILD
+						  COMMAND ${CHECKSUM_TOOL} ARGS ../vanillatd.z64)
+	endif()
+
     if(MAP_EDITORTD)
         target_compile_definitions(VanillaTD PUBLIC INTERNAL_VERSION)
     endif()

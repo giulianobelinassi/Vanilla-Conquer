@@ -42,6 +42,11 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#elif defined(_N64)
+struct in_addr
+{
+  /* Empty struct.  There is no networking in N64.  */
+};
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>

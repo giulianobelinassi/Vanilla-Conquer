@@ -49,6 +49,9 @@ void Print_Error_Exit(char* string);
 #define vc_chdir(x) _wchdir(UTF8To16(x))
 extern void Create_Main_Window(HANDLE instance, int width, int height);
 HINSTANCE ProgramInstance;
+#elif defined(_N64)
+#include <libdragon.h>
+#define vc_chdir(x) do {} while(0)
 #else
 #include <unistd.h>
 #define vc_chdir(x) chdir(x)

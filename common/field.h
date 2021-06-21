@@ -36,6 +36,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#elif defined(_N64)
+/* Include nothing.  */
 #else
 #include <arpa/inet.h>
 #endif

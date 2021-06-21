@@ -100,6 +100,8 @@ set(COMMON_SRC
 
 if (WIN32)
     list(APPEND COMMON_SRC file_win.cpp paths_win.cpp)
+elseif (N64)
+	list(APPEND COMMON_SRC file_n64.cpp paths_n64.cpp)
 else()
     list(APPEND COMMON_SRC file_posix.cpp paths_posix.cpp)
 endif()

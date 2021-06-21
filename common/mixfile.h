@@ -34,6 +34,11 @@
 #include <libgen.h> // For basename()
 #endif
 
+#ifdef _N64
+/* Files are placed on root, so the buffer can be short. */
+#define PATH_MAX 512
+#endif
+
 #ifndef _MAX_PATH
 #define _MAX_PATH PATH_MAX
 #endif
@@ -515,6 +520,9 @@ template <class T> MixFileClass<T>* MixFileClass<T>::Finder(char const* filename
         */
         _splitpath(ptr->Filename, NULL, NULL, name, ext);
         _makepath(path, NULL, NULL, name, ext);
+#elif defined(_N64)
+	char buff[PATH_MAX] = "";
+        char* path = nullptr;
 #else
         char buff[PATH_MAX];
         char* path = nullptr;
