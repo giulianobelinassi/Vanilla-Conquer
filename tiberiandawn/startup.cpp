@@ -201,8 +201,32 @@ int DLL_Startup(const char* command_line_in)
 }
 #endif // REMASTER_BUILD
 
+#ifdef _N64
+
+static void initialize_libdragon()
+{
+    static resolution_t res = RESOLUTION_320x240;
+    static bitdepth_t bit = DEPTH_32_BPP;
+
+    init_interrupts();
+    console_init();
+    rdp_init();
+    controller_init();
+    timer_init();
+    debug_init_isviewer();
+
+    display_init( res, bit, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE );
+    console_set_render_mode(RENDER_AUTOMATIC);
+}
+#endif
+
 int main(int argc, char** argv)
 {
+#endif
+
+#ifdef _N64
+    initialize_libdragon();
+#endif
     UtfArgs args(argc, argv);
     CCDebugString("C&C95 - Starting up.\n");
 
@@ -226,7 +250,7 @@ int main(int argc, char** argv)
     /*
     **	Remember the current working directory and drive.
     */
-    Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", args.ArgV[0]);
+    Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", argc > 0? args.ArgV[0]: NULL);
     CDFileClass::Refresh_Search_Drives();
 
     if (Parse_Command_Line(args.ArgC, args.ArgV)) {
@@ -438,6 +462,7 @@ int main(int argc, char** argv)
         }
         SlowPalette = ini.Get_Bool("Options", "SlowPalette", false);
 
+#ifndef _N64 /* Nintendo 64 can not write into ROM cart.  */
         /*
         ** Regardless of whether we should run it or not, here we're
         ** gonna change it to say "no" in the future.
@@ -447,7 +472,7 @@ int main(int argc, char** argv)
             ini.Put_Bool("Intro", "PlayIntro", false);
             ini.Save(cfile);
         }
-
+#endif
         Memory_Error_Exit = Print_Error_End_Exit;
 
         CCDebugString("C&C95 - Entering main game.\n");
@@ -461,8 +486,10 @@ int main(int argc, char** argv)
         ** Save settings if they were changed during gameplay.
         */
         ini.Load(cfile);
+#ifndef _N64
         Settings.Save(ini);
         ini.Save(cfile);
+#endif
 
         VisiblePage.Clear();
         HiddenPage.Clear();

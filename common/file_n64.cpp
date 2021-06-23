@@ -6,10 +6,13 @@
 #include <unistd.h>
 #include <limits.h>
 #include <fnmatch.h>
+#include <libdragon.h>
 
 #ifndef PATH_MAX
-#define PATH_MAX 1024
+#define PATH_MAX 512
 #endif
+
+static bool dfs_initialized = false;
 
 class Find_File_Data_Libdragon : public Find_File_Data
 {
@@ -25,19 +28,14 @@ public:
     virtual void Close();
 
 private:
-    void* Directory;
-    void* DirEntry;
-    const char* FileFilter;
+    int fp;
     char FullName[PATH_MAX];
-    char DirName[PATH_MAX];
-
     bool FindNextWithFilter();
 };
 
 Find_File_Data_Libdragon::Find_File_Data_Libdragon()
-    : Directory(nullptr)
-    , DirEntry(nullptr)
 {
+	strcpy(FullName, "");
 }
 
 Find_File_Data_Libdragon::~Find_File_Data_Libdragon()
@@ -47,9 +45,8 @@ Find_File_Data_Libdragon::~Find_File_Data_Libdragon()
 
 const char* Find_File_Data_Libdragon::GetName() const
 {
-    if (DirEntry == nullptr) {
-        return nullptr;
-    }
+	if (!strcmp(FullName, ""))
+		return nullptr;
     return FullName;
 }
 
@@ -65,7 +62,22 @@ bool Find_File_Data_Libdragon::FindNextWithFilter()
 
 bool Find_File_Data_Libdragon::FindFirst(const char* fname)
 {
-    return true;
+    if (fname[0] != '/')
+	sprintf(FullName, "/%s", fname);
+    else
+	strcpy(FullName, fname);
+
+    if (!dfs_initialized)
+	if (dfs_init(0xB0401000) != DFS_ESUCCESS)
+	  {
+	    volatile int x = fname[0] / INT_MAX;
+	    x = 4 / x;
+	  }
+	else
+	  dfs_initialized = true;
+
+    fp = dfs_open(FullName);
+    return fp >= 0;
 }
 
 bool Find_File_Data_Libdragon::FindNext()
@@ -75,7 +87,8 @@ bool Find_File_Data_Libdragon::FindNext()
 
 void Find_File_Data_Libdragon::Close()
 {
-    Directory = nullptr;
+	dfs_close(fp);
+	strcpy(FullName, "");
 }
 
 Find_File_Data* Find_File_Data::CreateFindData()

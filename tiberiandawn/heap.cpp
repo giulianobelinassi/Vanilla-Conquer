@@ -52,6 +52,10 @@
 #include <stddef.h>
 #include <string.h>
 
+#ifdef _N64
+#include <libdragon.h>
+#endif
+
 /***********************************************************************************************
  * FixedHeapClass::FixedHeapClass -- Normal constructor for heap management class.             *
  *                                                                                             *
