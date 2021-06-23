@@ -21,57 +21,42 @@
 #include <unistd.h>
 #include <vector>
 
-#if defined(__linux__)
-#include <linux/limits.h>
-#else
-#include <limits.h>
-#endif
-
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
 #include <inttypes.h>
 
-#if defined(__APPLE__)
-#define _DARWIN_BETTER_REALPATH
-#include <mach-o/dyld.h>
-#include <TargetConditionals.h>
-#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__NetBSD__)
-#include <sys/sysctl.h>
-#endif
+static const char *user_home_cstr = "/";
+
+static std::string user_home;
+static std::string *user_home_ptr = NULL;
 
 namespace
 {
     const std::string& User_Home()
     {
-	return std::string("");
+	return user_home;
     }
 
     std::string Get_Posix_Default(const char* env_var, const char* relative_path)
     {
-      return std::string("");
+	return user_home;
     }
 } // namespace
 
-#if defined(__sun)
-#define PROC_SELF_EXE "/proc/self/path/a.out"
-#else
-#define PROC_SELF_EXE "/proc/self/exe"
-#endif
-
 const char* PathsClass::Program_Path()
 {
-    return "";
+    return "/vanillatd";
 }
 
 const char* PathsClass::Data_Path()
 {
-	return "";
+    return user_home_cstr;
 }
 
 const char* PathsClass::User_Path()
 {
-    return "";
+    return user_home_cstr;
 }
 
 bool PathsClass::Create_Directory(const char* dirname)
@@ -86,5 +71,11 @@ bool PathsClass::Is_Absolute(const char* path)
 
 std::string PathsClass::Argv_Path(const char* cmd_arg)
 {
-    return std::string("");
+    if (!user_home_ptr)
+      {
+	user_home = std::string(user_home_cstr);
+	user_home_ptr = &user_home;
+      }
+
+    return user_home;
 }

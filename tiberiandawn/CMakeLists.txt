@@ -227,7 +227,11 @@ if(BUILD_VANILLATD)
 						  VERBATIM)
 		add_custom_command(TARGET VanillaTD
 						  POST_BUILD
-						  COMMAND ${N64_TOOL} ARGS -l 2M -t "${PROJECT_NAME}" -h ${ROM_HEADER} -o ../vanillatd.z64 ../vanillatd.bin )
+						  COMMAND ${MKDFS} ARGS cdrom.dfs ../../tiberiandawn/filesystem/
+						  VERBATIM)
+		add_custom_command(TARGET VanillaTD
+						  POST_BUILD
+						  COMMAND ${N64_TOOL} ARGS -l 4M -t "${PROJECT_NAME}" -h ${ROM_HEADER} -o ../vanillatd.z64 ../vanillatd.bin -s 4M cdrom.dfs)
 		add_custom_command(TARGET VanillaTD
 						  POST_BUILD
 						  COMMAND ${CHECKSUM_TOOL} ARGS ../vanillatd.z64)

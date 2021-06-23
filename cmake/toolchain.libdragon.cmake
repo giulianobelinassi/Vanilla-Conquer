@@ -29,8 +29,9 @@ set(N64_TOOL	       	${LIBDRAGON_PREFIX}/bin/n64tool)
 set(CHECKSUM_TOOL       ${LIBDRAGON_PREFIX}/bin/chksum64)
 set(OBJCOPY_TOOL        ${LIBDRAGON_PREFIX}/bin/mips64-elf-objcopy)
 set(ROM_HEADER          ${LIBDRAGON_PREFIX}/lib/header)
+set(MKDFS               ${LIBDRAGON_PREFIX}/bin/mkdfs)
 
 # Set additional link options for N64 linking
-add_link_options(-Tn64.ld -Wl,--gc-sections)
+add_link_options(-Tn64.ld)
 
 include(${CMAKE_CURRENT_LIST_DIR}/libdragon-n64.cmake)

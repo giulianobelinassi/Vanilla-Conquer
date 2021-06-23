@@ -257,8 +257,8 @@ inline static void _splitpath(const char* path, char* drive, char* dir, char* fn
         }
     }
 }
-/* There is no point for this function be redefined here.  */
-#if 0
+
+#ifndef _N64
 inline static char* strupr(char* str)
 {
     for (int i = 0; i < strlen(str); i++)
