@@ -73,7 +73,20 @@
         file_ptr = pool;                                                                                               \
     }
 
-GraphicBufferClass* Read_PCX_File(const char* name, char* palette, void* Buff, int Size)
+static void Le_PCX_To_Be(PCX_HEADER *header)
+{
+    header->x             = le32toh(header->x);
+    header->y             = le32toh(header->y);
+    header->width         = le32toh(header->width);
+    header->height        = le32toh(header->height);
+    header->xres          = le32toh(header->xres);
+    header->yres          = le32toh(header->yres);
+    header->byte_per_line = le32toh(header->byte_per_line);
+    header->palette_type  = le32toh(header->palette_type);
+
+}
+
+GraphicBufferClass* Read_PCX_File(char* name, char* palette, void* Buff, long Size)
 {
     unsigned i, j;
     unsigned rle;
@@ -96,6 +109,7 @@ GraphicBufferClass* Read_PCX_File(const char* name, char* palette, void* Buff, i
     file_handle.Open(READ);
 
     file_handle.Read(&header, sizeof(PCX_HEADER));
+    Le_PCX_To_Be(&header);
 
     /* PCX header is on little endian format.  */
     header.width = le16toh(header.width);
