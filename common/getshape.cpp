@@ -45,6 +45,7 @@
 */
 #include "wwstd.h"
 #include "shape.h"
+#include "endianness.h"
 
 /***************************************************************************
  * Get_Shape_Size -- Fetch the size of the shape in memory.                *
@@ -198,10 +199,10 @@ void* Extract_Shape(void const* buffer, int shape)
     /*
     ----------------------- Return if invalid argument -----------------------
     */
-    if (!buffer || shape < 0 || shape >= block->NumShapes)
+    if (!buffer || shape < 0 || shape >= htole16(block->NumShapes))
         return (NULL);
 
-    offset = block->Offsets[shape];
+    offset = htole32(block->Offsets[shape]);
 
     return (bytebuf + 2 + offset);
 

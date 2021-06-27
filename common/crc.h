@@ -88,7 +88,7 @@ protected:
     int32_t Value(void) const
     {
         if (Buffer_Needs_Data()) {
-            return (lrotl(CRC, 1) + StagingBuffer.Composite);
+            return (lrotl(CRC, 1) + htole32(StagingBuffer.Composite));
         }
         return (CRC);
     };

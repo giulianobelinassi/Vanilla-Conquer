@@ -34,6 +34,7 @@
  *   CRCEngine::operator() -- Submits an arbitrary data block to the CRC engine.               *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#include "endianness.h"
 #include "crc.h"
 
 /***********************************************************************************************
@@ -108,7 +109,7 @@ int32_t CRCEngine::operator()(void const* buffer, size_t length)
         int32_t const* longptr = (int32_t const*)dataptr;
         int longcount = bytes_left / sizeof(int32_t); // Whole 'long' elements remaining.
         while (longcount--) {
-            CRC = lrotl(CRC, 1) + *longptr++;
+            CRC = lrotl(CRC, 1) + htole32(*longptr++);
             bytes_left -= sizeof(int32_t);
         }
 

@@ -26,56 +26,54 @@
 #endif
 #include <inttypes.h>
 
-static const char *user_home_cstr = "/";
-
-static std::string user_home;
-static std::string *user_home_ptr = NULL;
+static std::string user_home = "rom:/";
+static int user_home_len = strlen(user_home.c_str());
 
 namespace
 {
     const std::string& User_Home()
     {
-	return user_home;
+        return user_home;
     }
 
     std::string Get_Posix_Default(const char* env_var, const char* relative_path)
     {
-	return user_home;
+        return user_home;
     }
 } // namespace
 
 const char* PathsClass::Program_Path()
 {
-    return "/vanillatd";
+    ProgramPath = user_home;
+    return ProgramPath.c_str();
 }
 
 const char* PathsClass::Data_Path()
 {
-    return user_home_cstr;
+    DataPath = user_home;
+    return DataPath.c_str();
 }
 
 const char* PathsClass::User_Path()
 {
-    return user_home_cstr;
+    UserPath = user_home;
+    return UserPath.c_str();
 }
 
 bool PathsClass::Create_Directory(const char* dirname)
 {
-    return true;
+    return false;
 }
 
 bool PathsClass::Is_Absolute(const char* path)
 {
-    return true;
+    if (!path)
+        return false;
+
+    return path[0] == '/' || !strncmp(user_home.c_str(), path, user_home_len);
 }
 
 std::string PathsClass::Argv_Path(const char* cmd_arg)
 {
-    if (!user_home_ptr)
-      {
-	user_home = std::string(user_home_cstr);
-	user_home_ptr = &user_home;
-      }
-
     return user_home;
 }

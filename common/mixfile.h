@@ -146,6 +146,7 @@ private:
     **	have an entry in this table. The entries are sorted by their (signed) CRC value.
     */
     SubBlock* HeaderBuffer;
+    void FixHeaderBufferEndianness();
 
     /*
     **	If the mixfile has been cached, then this points to the cached data.
@@ -313,8 +314,8 @@ MixFileClass<T>::MixFileClass(char const* filename)
         straw->Get(((char*)&fileheader) + sizeof(alternate), sizeof(fileheader) - sizeof(alternate));
     }
 
-    Count = fileheader.count;
-    DataSize = fileheader.size;
+    Count = le16toh(fileheader.count);
+    DataSize = le32toh(fileheader.size);
 
     /*
     **	Load up the offset control array. If RAM is exhausted, then the mixfile is invalid.
@@ -323,6 +324,8 @@ MixFileClass<T>::MixFileClass(char const* filename)
     if (HeaderBuffer == NULL)
         return;
     straw->Get(HeaderBuffer, Count * sizeof(SubBlock));
+
+    FixHeaderBufferEndianness();
 
     /*
     **	The start of the embedded mixfile data will be at the current file offset.
@@ -436,6 +439,7 @@ MixFileClass<T>::MixFileClass(char const* filename, PKey const* key)
 
     Count = fileheader.count;
     DataSize = fileheader.size;
+    printf("Mixfileclass %s Datasize %08x\n , filename, DataSize");
     // BGMono_Printf("Mixfileclass %s DataSize: %08x   \n",filename,DataSize);Get_Key();
     /*
     **	Load up the offset control array. If RAM is exhausted, then the mixfile is invalid.
@@ -444,6 +448,7 @@ MixFileClass<T>::MixFileClass(char const* filename, PKey const* key)
     if (HeaderBuffer == NULL)
         return;
     straw->Get(HeaderBuffer, Count * sizeof(SubBlock));
+    FixHeaderBufferEndianness();
 
     /*
     **	The start of the embedded mixfile data will be at the current file offset.
@@ -520,15 +525,23 @@ template <class T> MixFileClass<T>* MixFileClass<T>::Finder(char const* filename
         */
         _splitpath(ptr->Filename, NULL, NULL, name, ext);
         _makepath(path, NULL, NULL, name, ext);
-#elif defined(_N64)
-	char buff[PATH_MAX] = "";
-        char* path = nullptr;
 #else
         char buff[PATH_MAX];
         char* path = nullptr;
         strncpy(buff, ptr->Filename, PATH_MAX);
         buff[PATH_MAX - 1] = '\0';
+
+#if defined(_N64)
+        int i, last_slash = -1;
+        for (i = 0; buff[i] != '\0'; i++)
+            if (buff[i] == '/')
+                last_slash = i;
+
+        buff[last_slash] = '\0';
+        path = &buff[last_slash+1];
+#else
         path = basename(buff);
+#endif
 #endif
         if (stricmp(path, filename) == 0) {
             return (ptr);
@@ -536,6 +549,17 @@ template <class T> MixFileClass<T>* MixFileClass<T>::Finder(char const* filename
         ptr = ptr->Next();
     }
     return (0);
+}
+
+template <class T> void MixFileClass<T>::FixHeaderBufferEndianness()
+{
+    int i;
+    for (i = 0; i < Count; ++i)
+    {
+        HeaderBuffer[i].CRC    = le32toh(HeaderBuffer[i].CRC);
+        HeaderBuffer[i].Offset = le32toh(HeaderBuffer[i].Offset);
+        HeaderBuffer[i].Size   = le32toh(HeaderBuffer[i].Size);
+    }
 }
 
 /***********************************************************************************************
@@ -596,6 +620,7 @@ template <class T> bool MixFileClass<T>::Cache(Buffer const* buffer)
             Data = buffer->Get_Buffer();
         }
     } else {
+        //DataSize = 300000; /* It is requesting 800MB for cclocal... ?!*/
         Data = new char[DataSize];
         IsAllocated = true;
     }
