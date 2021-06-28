@@ -32,6 +32,6 @@ set(ROM_HEADER          ${LIBDRAGON_PREFIX}/lib/header)
 set(MKDFS               ${LIBDRAGON_PREFIX}/bin/mkdfs)
 
 # Set additional link options for N64 linking
-add_link_options(-Tn64.ld)
+add_link_options(-Tn64.ld -Wl,--gc-sections)
 
 include(${CMAKE_CURRENT_LIST_DIR}/libdragon-n64.cmake)

@@ -205,9 +205,6 @@ int DLL_Startup(const char* command_line_in)
 
 static void initialize_libdragon()
 {
-    static resolution_t res = RESOLUTION_320x240;
-    static bitdepth_t bit = DEPTH_32_BPP;
-
     init_interrupts();
     console_init();
     rdp_init();
@@ -215,7 +212,7 @@ static void initialize_libdragon()
     timer_init();
     debug_init_isviewer();
 
-    display_init( res, bit, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE );
+    //display_init( res, bit, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE );
     console_set_render_mode(RENDER_AUTOMATIC);
 }
 #endif
