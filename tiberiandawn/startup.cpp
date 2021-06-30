@@ -217,9 +217,11 @@ int main(int argc, char** argv)
 
         CCDebugString("C&C95 - Creating main window.\n");
 
-        //Test
-        ScreenWidth = 320;
-        ScreenHeight = 200;
+#ifndef REMASTER_BUILD
+        /* Get Width and Height from CONQUER.INI. */
+        ScreenWidth = Settings.Video.Width;
+        ScreenHeight = Settings.Video.Height;
+#endif
 
 #if defined(_WIN32) && !defined(SDL2_BUILD)
         Create_Main_Window(ProgramInstance, ScreenWidth, ScreenHeight);
@@ -233,8 +235,9 @@ int main(int argc, char** argv)
 
         bool video_success = false;
         CCDebugString("C&C95 - Setting video mode.\n");
+
         /*
-        ** Set 640x400 video mode.
+        ** Set video mode.
         */
 #ifdef REMASTER_BUILD
         video_success = true;
