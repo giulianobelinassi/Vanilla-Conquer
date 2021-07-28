@@ -1057,7 +1057,7 @@ uint32_t SessionClass::Compute_Unique_ID(void)
     return 1; // PG
 #else         // PG
     time_t tm;
-    unsigned long id;
+    unsigned int id;
     char* path;
     int i;
 
