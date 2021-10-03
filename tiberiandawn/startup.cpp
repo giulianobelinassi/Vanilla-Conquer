@@ -235,7 +235,7 @@ int init_ds(void)
 int main(int argc, char** argv)
 {
 #ifdef _NDS
-    init_ds();
+    //init_ds();
 #endif
 
     UtfArgs args(argc, argv);
