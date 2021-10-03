@@ -39,6 +39,11 @@
 #include "function.h"
 #include "common/tcpip.h"
 #include "common/vqaaudio.h"
+#include "debugstring.h"
+
+#ifdef _NDS
+#include <nds.h>
+#endif
 
 void output(short, short)
 {
@@ -496,6 +501,14 @@ bool Any_Locked()
  *=============================================================================================*/
 void Memory_Error_Handler(void)
 {
+
+#ifdef _NDS
+    DBG_LOG("Error - out of memory");
+    swiWaitForVBlank();
+    while (1)
+        ;
+#endif
+
     GlyphX_Debug_Print("Error - out of memory.");
     VisiblePage.Clear();
     Set_Palette(GamePalette);

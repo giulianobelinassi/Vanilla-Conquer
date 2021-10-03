@@ -53,7 +53,9 @@
 
 /* Define dummy structs for systems that do not support sockets.  */
 #ifdef _NDS
-struct in_addr {};
+struct in_addr
+{
+};
 #endif
 
 extern bool Server;

@@ -41,8 +41,7 @@ link_libraries("-L${DEVKITARM}/arm-none-eabi/lib")
 link_libraries("-L${DEVKITPRO}/libnds/lib")
 link_libraries("-L${DEVKITPRO}/libgba/lib")
 
-#link_libraries("-specs=ds_arm9.specs -g -mthumb -mthumb-interwork -Wl,-Map,vanilla.map")
-
 # Link with those libraries
-link_libraries("-lc")
+link_libraries("-lc")    # C library
+link_libraries("-lfat")
 link_libraries("-lnds9")

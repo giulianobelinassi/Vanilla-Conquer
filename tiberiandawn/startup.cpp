@@ -212,31 +212,22 @@ void Vblank()
     frame++;
 }
 
+void Disable_Uncompressed_Shapes();
+
 int init_ds(void)
 {
-    touchPosition touchXY;
-
     irqSet(IRQ_VBLANK, Vblank);
 
     consoleDemoInit();
-
-    iprintf("VanillaTD Hello world from Nintendo DS :)\n");
-
+#if 0
     while (1) {
         swiWaitForVBlank();
         scanKeys();
         int keys = keysDown();
-        if (keys & KEY_START)
+        if (keys & (KEY_START | KEY_A))
             break;
-
-        touchRead(&touchXY);
-
-        // print at using ansi escape sequence \x1b[line;columnH
-        iprintf("\x1b[10;0HFrame = %d", frame);
-        iprintf("\x1b[16;0HTouch x = %04X, %04X\n", touchXY.rawx, touchXY.px);
-        iprintf("Touch y = %04X, %04X\n", touchXY.rawy, touchXY.py);
     }
-
+#endif
     return 0;
 }
 #endif
@@ -270,7 +261,14 @@ int main(int argc, char** argv)
     /*
     **	Remember the current working directory and drive.
     */
-    Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", args.ArgV[0]);
+    const char* files;
+#ifdef _NDS
+    files = "/vanillatd";
+#else
+    files = args.ArgV[0];
+#endif
+
+    Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", files);
     vc_chdir(Paths.Data_Path());
     CDFileClass::Refresh_Search_Drives();
 

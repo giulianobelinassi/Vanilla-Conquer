@@ -151,8 +151,15 @@ void Check_Use_Compressed_Shapes()
     // Uncompressed shapes enabled for performance reasons. We don't need to worry about memory.
     // Uncompressed shapes don't seem to work in RA for rotated/scaled objects so wherever scale/rotate is used,
     // we will need to disable it (like in Techno_Draw_Object). ST - 11/6/2019 2:09PM
+
+#ifdef _NDS
+    // mrparrot 03/10/2021: Nintendo DS doesn't have enough memory to run uncompressed shapes.
+    UseBigShapeBuffer = false;
+    OriginalUseBigShapeBuffer = false;
+#else
     UseBigShapeBuffer = true;
     OriginalUseBigShapeBuffer = true;
+#endif
 }
 
 /***********************************************************************************************

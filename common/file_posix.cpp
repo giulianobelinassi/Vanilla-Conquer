@@ -8,10 +8,32 @@
 #include <limits.h>
 #include <fnmatch.h>
 
-/* Nintendo DS only supports FAT as filesystem, which is case-insensitive, so
-   it does not really matter that FNM_CASEFOLD is unsupported.  */
 #ifdef _NDS
+
+/* Nintendo DS only supports FAT as filesystem, which is case-insensitive, so
+   it should not really matter that FNM_CASEFOLD is unsupported.  */
 #define FNM_CASEFOLD 0
+
+#include "debugstring.h"
+#include <nds.h>
+#include <fat.h>
+
+static bool fs_initialized = false;
+
+/* Nintendo DS require its filesystem structures to be explicitely initialized. */
+bool maybe_initialize_fs()
+{
+    if (!fatInitDefault()) {
+        DBG_LOG("FATAL ERROR: Unable to initialize file system");
+        swiWaitForVBlank();
+        while (1)
+            ;
+    }
+
+    fs_initialized = true;
+    return true;
+}
+
 #endif
 
 class Find_File_Data_Posix : public Find_File_Data
@@ -86,6 +108,9 @@ bool Find_File_Data_Posix::FindNextWithFilter()
 
 bool Find_File_Data_Posix::FindFirst(const char* fname)
 {
+#ifdef _NDS
+    maybe_initialize_fs();
+#endif
     Close();
     FullName[0] = '\0';
     DirName[0] = '\0';

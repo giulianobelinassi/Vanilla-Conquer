@@ -107,6 +107,10 @@ else()
     list(APPEND COMMON_SRC file_posix.cpp paths_posix.cpp)
 endif()
 
+if (NDS)
+    list(APPEND COMMON_SRC fnmatch.cpp)
+endif()
+
 set(COMMONR_SRC
     framelimit.cpp
     gbuffer.cpp

@@ -45,39 +45,63 @@
 
 /* Some systems are quasi-posix compliant: they don't provide some functions.  */
 #ifdef _NDS
+
+#ifdef _NDS
 extern "C" {
-const char *dirname(const char *path)
+#else
+extern "C++" {
+#endif
+
+const char* basename(const char* path)
 {
+    const char* base = strrchr(path, '/');
+
+    /* If strrchr returned non-null, it means that it found the last '/' in the
+     * path, so add one to get the base name.  */
+    if (base) {
+        //DBG_LOG("basename: called: %s return: %s\n", path, base + 1);
+        return base + 1;
+    }
+
+    // DBG_LOG("basename: called = returned = %s\n", path);
     return path;
 }
-
-const char *basename(const char *path)
-{
-    return path;
 }
 
-int fnmatch(const char *pattern, const char *string, int flags)
-{
-    return 0;
-}
+extern "C" {
 
 uid_t getuid(void)
 {
+    DBG_LOG("getuid called");
     return 0;
 }
 
 long sysconf(int name)
 {
+    DBG_LOG("sysconf called: %d\n", name);
     return 0;
 }
 
-char *realpath(const char * __restrict path, char * __restrict resolved_path)
+char* realpath(const char* __restrict path, char* __restrict resolved_path)
 {
-    return (char *) path;
+    DBG_LOG("realpath called: path = %s; resolved_path = %s\n", path, resolved_path);
+    if (!strcmp(path, ".")) {
+#ifdef _NDS
+        strcpy(resolved_path, "/vanillatd/");
+#else
+        strcpy(resolved_path, "/home/giulianob/vanillatd/");
+#endif
+        DBG_LOG("realpath: about to return %s\n", resolved_path);
+        return resolved_path;
+    }
+
+    DBG_LOG("realpath: about to return %s\n", path);
+    return (char*)path;
 }
 
-int getpwuid_r(uid_t uid, struct passwd *pwd, char *buf, size_t buflen, struct passwd **result)
+int getpwuid_r(uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result)
 {
+    DBG_LOG("getpwuid_r called: pwd = %lx, buf = %s, buflen = %lu, result = %lx\n", pwd, buf, buflen, result);
     return 0;
 }
 }
@@ -162,6 +186,11 @@ namespace
 const char* PathsClass::Program_Path()
 {
     if (ProgramPath.empty()) {
+#ifdef _NDS
+        ProgramPath = std::string("/vanillatd");
+        return ProgramPath.c_str();
+#endif
+
         /*
         ** Adapted from https://github.com/gpakosz/whereami
         ** dual licensed under the WTFPL v2 and MIT licenses without any warranty. by Gregory Pakosz (@gpakosz)
@@ -220,6 +249,11 @@ const char* PathsClass::Program_Path()
 const char* PathsClass::Data_Path()
 {
     if (DataPath.empty()) {
+#ifdef _NDS
+        DataPath = std::string("/vanillatd");
+        return DataPath.c_str();
+#endif
+
         if (ProgramPath.empty()) {
             // Init the program path first if it hasn't been done already.
             Program_Path();
@@ -240,6 +274,9 @@ const char* PathsClass::User_Path()
     if (UserPath.empty()) {
 #ifdef TARGET_OS_MAC
         UserPath = User_Home() + "/Library/Application Support/Vanilla-Conquer";
+#elif defined _NDS
+        UserPath = "/vanillatd";
+        return UserPath.c_str();
 #else
         UserPath = Get_Posix_Default("XDG_CONFIG_HOME", ".config") + "/vanilla-conquer";
 #endif
