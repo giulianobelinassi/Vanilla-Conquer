@@ -14,7 +14,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#ifndef _NDS
 #include <dlfcn.h>
+#endif
 #include <pwd.h>
 #include <stdexcept>
 #include <sys/stat.h>
@@ -39,6 +41,46 @@
 #include <TargetConditionals.h>
 #elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__NetBSD__)
 #include <sys/sysctl.h>
+#endif
+
+/* Some systems are quasi-posix compliant: they don't provide some functions.  */
+#ifdef _NDS
+extern "C" {
+const char *dirname(const char *path)
+{
+    return path;
+}
+
+const char *basename(const char *path)
+{
+    return path;
+}
+
+int fnmatch(const char *pattern, const char *string, int flags)
+{
+    return 0;
+}
+
+uid_t getuid(void)
+{
+    return 0;
+}
+
+long sysconf(int name)
+{
+    return 0;
+}
+
+char *realpath(const char * __restrict path, char * __restrict resolved_path)
+{
+    return (char *) path;
+}
+
+int getpwuid_r(uid_t uid, struct passwd *pwd, char *buf, size_t buflen, struct passwd **result)
+{
+    return 0;
+}
+}
 #endif
 
 namespace

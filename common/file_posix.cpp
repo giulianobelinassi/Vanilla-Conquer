@@ -8,6 +8,12 @@
 #include <limits.h>
 #include <fnmatch.h>
 
+/* Nintendo DS only supports FAT as filesystem, which is case-insensitive, so
+   it does not really matter that FNM_CASEFOLD is unsupported.  */
+#ifdef _NDS
+#define FNM_CASEFOLD 0
+#endif
+
 class Find_File_Data_Posix : public Find_File_Data
 {
 public:

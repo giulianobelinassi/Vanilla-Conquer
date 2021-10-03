@@ -54,6 +54,10 @@ HINSTANCE ProgramInstance;
 #define vc_chdir(x) chdir(x)
 #endif
 
+#ifdef _NDS
+#include <nds.h>
+#endif
+
 extern int ReadyToQuit;
 void Read_Setup_Options(RawFileClass* config_file);
 
@@ -200,8 +204,49 @@ int DLL_Startup(const char* command_line_in)
 }
 #endif // REMASTER_BUILD
 
+#ifdef _NDS
+volatile int frame = 0;
+
+void Vblank()
+{
+    frame++;
+}
+
+int init_ds(void)
+{
+    touchPosition touchXY;
+
+    irqSet(IRQ_VBLANK, Vblank);
+
+    consoleDemoInit();
+
+    iprintf("VanillaTD Hello world from Nintendo DS :)\n");
+
+    while (1) {
+        swiWaitForVBlank();
+        scanKeys();
+        int keys = keysDown();
+        if (keys & KEY_START)
+            break;
+
+        touchRead(&touchXY);
+
+        // print at using ansi escape sequence \x1b[line;columnH
+        iprintf("\x1b[10;0HFrame = %d", frame);
+        iprintf("\x1b[16;0HTouch x = %04X, %04X\n", touchXY.rawx, touchXY.px);
+        iprintf("Touch y = %04X, %04X\n", touchXY.rawy, touchXY.py);
+    }
+
+    return 0;
+}
+#endif
+
 int main(int argc, char** argv)
 {
+#ifdef _NDS
+    init_ds();
+#endif
+
     UtfArgs args(argc, argv);
     CCDebugString("C&C95 - Starting up.\n");
 
@@ -235,7 +280,7 @@ int main(int argc, char** argv)
 
         CCFileClass cfile("CONQUER.INI");
 
-        Keyboard = new WWKeyboardClass();
+        WWKeyboard = new WWKeyboardClass();
 
 #ifdef JAPANESE
         //////////////////////////////////////if(!ForceEnglish) KBLanguage = 1;
@@ -477,7 +522,7 @@ int main(int argc, char** argv)
 #elif defined(_WIN32)
         PostMessageA(MainWindow, WM_DESTROY, 0, 0);
         do {
-            Keyboard->Check();
+            WWKeyboard->Check();
         } while (ReadyToQuit == 1);
 #endif
 
@@ -551,7 +596,7 @@ void Prog_End(const char* why, bool fatal) // Added why and fatal parameters. ST
 void Print_Error_End_Exit(char* string)
 {
     printf("%s\n", string);
-    Keyboard->Get();
+    WWKeyboard->Get();
     Prog_End();
     printf("%s\n", string);
     if (!RunningAsDLL) {
