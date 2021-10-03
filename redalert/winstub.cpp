@@ -121,7 +121,7 @@ void Focus_Restore(void)
 void Check_For_Focus_Loss(void)
 {
 #if defined(SDL2_BUILD)
-    Keyboard->Check();
+    WWKeyboard->Check();
 #elif defined(_WIN32) && !defined(REMASTER_BUILD) // PG
     static BOOL focus_last_time = 1;
     MSG msg;
@@ -201,7 +201,7 @@ long FAR PASCAL Windows_Procedure(HWND hwnd, UINT message, UINT wParam, LONG lPa
     **	was processed and requires no further action, then return with
     **	this information.
     */
-    if (Keyboard->Message_Handler(hwnd, message, wParam, lParam)) {
+    if (WWKeyboard->Message_Handler(hwnd, message, wParam, lParam)) {
         return (1);
     }
 
@@ -223,7 +223,7 @@ long FAR PASCAL Windows_Procedure(HWND hwnd, UINT message, UINT wParam, LONG lPa
         //		case WM_RBUTTONDOWN:
         //		case WM_RBUTTONUP:
         //		case WM_RBUTTONDBLCLK:
-        //	 		Keyboard->Message_Handler(hwnd, message, wParam, lParam);
+        //	 		WWKeyboard->Message_Handler(hwnd, message, wParam, lParam);
         //			return(0);
 
         /*
@@ -623,7 +623,7 @@ void Memory_Error_Handler(void)
     PostMessage(MainWindow, WM_DESTROY, 0, 0);
 #endif
     do {
-        Keyboard->Check();
+        WWKeyboard->Check();
     } while (ReadyToQuit == 1);
 
     exit(1);
