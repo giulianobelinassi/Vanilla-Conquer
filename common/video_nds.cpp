@@ -1,0 +1,432 @@
+//
+
+// Copyright 2020 Electronic Arts Inc.
+//
+// TiberianDawn.DLL and RedAlert.dll and corresponding source code is free
+// software: you can redistribute it and/or modify it under the terms of
+// the GNU General Public License as published by the Free Software Foundation,
+// either version 3 of the License, or (at your option) any later version.
+
+// TiberianDawn.DLL and RedAlert.dll and corresponding source code is distributed
+// in the hope that it will be useful, but with permitted additional restrictions
+// under Section 7 of the GPL. See the GNU General Public License in LICENSE.TXT
+// distributed with this program. You should have received a copy of the
+// GNU General Public License along with permitted additional restrictions
+// with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
+
+/***************************************************************************
+ **   C O N F I D E N T I A L --- W E S T W O O D   A S S O C I A T E S   **
+ ***************************************************************************
+ *                                                                         *
+ *                 Project Name : Westwood Win32 Library                   *
+ *                                                                         *
+ *                    File Name : DDRAW.CPP                                *
+ *                                                                         *
+ *                   Programmer : Philip W. Gorrow                         *
+ *                                                                         *
+ *                   Start Date : October 10, 1995                         *
+ *                                                                         *
+ *                  Last Update : October 10, 1995   []                    *
+ *                                                                         *
+ *-------------------------------------------------------------------------*
+ * Functions:                                                              *
+ * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+/*=========================================================================*/
+/* The following PRIVATE functions are in this file:                       */
+/*=========================================================================*/
+
+/*= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =*/
+
+#include "gbuffer.h"
+#include "palette.h"
+#include "video.h"
+#include <cstdio>
+#include <nds.h>
+
+class SurfaceMonitorClassNDS : public SurfaceMonitorClass
+{
+
+public:
+    SurfaceMonitorClassNDS()
+    {
+    }
+
+    virtual void Restore_Surfaces()
+    {
+    }
+
+    virtual void Set_Surface_Focus(bool in_focus)
+    {
+    }
+
+    virtual void Release()
+    {
+    }
+};
+
+SurfaceMonitorClassNDS AllSurfacesNDS;             // List of all direct draw surfaces
+SurfaceMonitorClass& AllSurfaces = AllSurfacesNDS; // List of all direct draw surfaces
+
+/***********************************************************************************************
+ * Set_Video_Mode -- Initializes Direct Draw and sets the required Video Mode                  *
+ *                                                                                             *
+ * INPUT:           int width           - the width of the video mode in pixels                *
+ *                  int height          - the height of the video mode in pixels               *
+ *                  int bits_per_pixel  - the number of bits per pixel the video mode supports *
+ *                                                                                             *
+ * OUTPUT:     none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   09/26/1995 PWG : Created.                                                                 *
+ *=============================================================================================*/
+
+static int bg3;
+
+void create_chess_pattern(int w, int h, unsigned char* _dest, unsigned char c1, unsigned char c2)
+{
+#define DEST(i, j) (_dest[(i) * (512) + (j)])
+
+    const int step = 16;
+
+    int i, j, ii, jj;
+    for (i = 0; i < h; i += step) {
+        for (j = 0; j < w; j += step) {
+            for (ii = i; ii < i + step; ii++) {
+                for (jj = j; jj < j + step; jj++) {
+                    char color = ((i + j) / step) % 2;
+                    if (color)
+                        DEST(ii, jj) = c1;
+                    else
+                        DEST(ii, jj) = c2;
+                }
+            }
+        }
+    }
+#undef DEST
+}
+
+bool Set_Video_Mode(int w, int h, int bits_per_pixel)
+{
+    powerOn(POWER_ALL);
+    defaultExceptionHandler();
+
+    TIMER0_DATA = 0; // Set up the timer
+    TIMER1_DATA = 0;
+    TIMER0_CR = TIMER_DIV_1024 | TIMER_ENABLE;
+    TIMER1_CR = TIMER_CASCADE | TIMER_ENABLE;
+
+    videoSetMode(MODE_5_2D | DISPLAY_BG3_ACTIVE); // BG3 only - extended rotation
+
+    bg3 = bgInit(3, BgType_Bmp8, BgSize_B8_512x512, 0, 0);
+
+    vramSetBankA(VRAM_A_MAIN_BG_0x06000000); // same as VRAM_A_MAIN_BG
+    vramSetBankB(VRAM_B_MAIN_BG_0x06020000); // use second bank for main screen - 256 KiB
+
+    REG_BG3CNT = BG_BMP8_512x512;  // BG3 Control register, 8 bits
+    REG_BG3PA = (320 * 256) / 256; //1 << 8;
+    REG_BG3PB = 0;                 // BG SCALING X
+    REG_BG3PC = 0;                 // BG SCALING Y
+    REG_BG3PD = (200 * 256) / 192; // << 8;
+    REG_BG3X = 0;
+    REG_BG3Y = 0;
+
+    // clear upper screen (black) instead of junk
+    memset(BG_GFX, 1, 512 * 512);
+    create_chess_pattern(512, 512, (unsigned char*)bgGetGfxPtr(bg3), 0, 60);
+
+    //dmaCopy(chess, bgGetGfxPtr(bg3), 512*200);
+
+    swiWaitForVBlank();
+    bgUpdate();
+
+    if (w != 320 || h != 200 || bits_per_pixel != 8)
+        return false;
+
+    return true;
+}
+
+bool Is_Video_Fullscreen()
+{
+    return true;
+}
+
+/***********************************************************************************************
+ * Reset_Video_Mode -- Resets video mode and deletes Direct Draw Object                        *
+ *                                                                                             *
+ * INPUT:		none                                                                            *
+ *                                                                                             *
+ * OUTPUT:     none                                                                            *
+ *                                                                                             *
+ * WARNINGS:                                                                                   *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   09/26/1995 PWG : Created.                                                                 *
+ *=============================================================================================*/
+void Reset_Video_Mode(void)
+{
+}
+
+/***********************************************************************************************
+ * Get_Free_Video_Memory -- returns amount of free video memory                                *
+ *                                                                                             *
+ *                                                                                             *
+ *                                                                                             *
+ * INPUT:    Nothing                                                                           *
+ *                                                                                             *
+ * OUTPUT:   bytes of available video RAM                                                      *
+ *                                                                                             *
+ * WARNINGS: None                                                                              *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/29/95 12:52PM ST : Created                                                            *
+ *=============================================================================================*/
+unsigned int Get_Free_Video_Memory(void)
+{
+    return 1000000000;
+}
+
+/***********************************************************************************************
+ * Get_Video_Hardware_Caps -- returns bitmask of direct draw video hardware support            *
+ *                                                                                             *
+ *                                                                                             *
+ *                                                                                             *
+ * INPUT:    Nothing                                                                           *
+ *                                                                                             *
+ * OUTPUT:   hardware flags                                                                    *
+ *                                                                                             *
+ * WARNINGS: Must call Set_Video_Mode 1st to create the direct draw object                     *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    1/12/96 9:14AM ST : Created                                                              *
+ *=============================================================================================*/
+unsigned Get_Video_Hardware_Capabilities(void)
+{
+    return VIDEO_BLITTER;
+}
+
+/***********************************************************************************************
+ * Wait_Vert_Blank -- Waits for the start (leading edge) of a vertical blank                   *
+ *                                                                                             *
+ * INPUT:                                                                                      *
+ *                                                                                             *
+ * OUTPUT:                                                                                     *
+ *                                                                                             *
+ * WARNINGS:                                                                                   *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *=============================================================================================*/
+void Wait_Vert_Blank(void)
+{
+    //swiWaitForVBlank();
+}
+
+/***********************************************************************************************
+ * Set_Palette -- set a direct draw palette                                                    *
+ *                                                                                             *
+ *                                                                                             *
+ *                                                                                             *
+ * INPUT:    ptr to 768 rgb palette bytes                                                      *
+ *                                                                                             *
+ * OUTPUT:   Nothing                                                                           *
+ *                                                                                             *
+ * WARNINGS: None                                                                              *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    10/11/95 3:33PM ST : Created                                                             *
+ *=============================================================================================*/
+void Set_DD_Palette(void* palette)
+{
+    unsigned char r, g, b;
+
+    unsigned char* rcolors = (unsigned char*)palette;
+    for (int i = 0; i < 256; i++) {
+        r = (unsigned char)rcolors[i * 3] << 2;
+        g = (unsigned char)rcolors[i * 3 + 1] << 2;
+        b = (unsigned char)rcolors[i * 3 + 2] << 2;
+
+        BG_PALETTE[i] = RGB8(r, g, b);
+    }
+}
+
+/***********************************************************************************************
+ * Wait_Blit -- waits for the DirectDraw blitter to become idle                                *
+ *                                                                                             *
+ *                                                                                             *
+ *                                                                                             *
+ * INPUT:    Nothing                                                                           *
+ *                                                                                             *
+ * OUTPUT:   Nothing                                                                           *
+ *                                                                                             *
+ * WARNINGS: None                                                                              *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   07-25-95 03:53pm ST : Created                                                             *
+ *=============================================================================================*/
+
+void Wait_Blit(void)
+{
+}
+
+void Set_Video_Cursor_Clip(bool clipped)
+{
+}
+
+/***********************************************************************************************
+ * SMC::SurfaceMonitorClass -- constructor for surface monitor class                           *
+ *                                                                                             *
+ *                                                                                             *
+ *                                                                                             *
+ * INPUT:    Nothing                                                                           *
+ *                                                                                             *
+ * OUTPUT:   Nothing                                                                           *
+ *                                                                                             *
+ * WARNINGS: None                                                                              *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/3/95 3:23PM ST : Created                                                              *
+ *=============================================================================================*/
+
+SurfaceMonitorClass::SurfaceMonitorClass()
+{
+    SurfacesRestored = false;
+}
+
+/*
+** VideoSurfaceDDraw
+*/
+
+class VideoSurfaceNDS;
+static VideoSurfaceNDS* frontSurface = nullptr;
+
+class VideoSurfaceNDS : public VideoSurface
+{
+public:
+    VideoSurfaceNDS(int w, int h, GBC_Enum flags)
+        : flags(flags)
+        , windowSurface(nullptr)
+        , lock(0)
+    {
+        if (w == 320 && h == 200) {
+            surface = (char*)malloc(512 * h);
+            if (!surface) {
+                printf("ERROR - Can't allocate surface buffer\n");
+                while (1)
+                    ;
+            }
+
+            create_chess_pattern(512, 200, (unsigned char*)surface, 0, 60);
+
+            if (flags & GBC_VISIBLE) {
+                windowSurface = surface;
+                frontSurface = this;
+            }
+        } else {
+            swiWaitForVBlank();
+            printf("ERROR - Unsupported surface size\n");
+            while (1)
+                ;
+        }
+    }
+
+    virtual ~VideoSurfaceNDS()
+    {
+        if (frontSurface == this) {
+            frontSurface = NULL;
+        }
+        if (surface)
+            free(surface);
+    }
+
+    virtual void* GetData() const
+    {
+        printf("GetData called\n");
+        return surface;
+    }
+    virtual long GetPitch() const
+    {
+        return 512;
+    }
+    virtual bool IsAllocated() const
+    {
+        printf("IsReadyToBlit\n");
+        return false;
+    }
+
+    virtual void AddAttachedSurface(VideoSurface* surface)
+    {
+    }
+
+    virtual bool IsReadyToBlit()
+    {
+        printf("IsReadyToBlit\n");
+        return false;
+    }
+
+    virtual bool LockWait()
+    {
+        printf("Awaiting surface lock\n");
+        return (lock == 0);
+    }
+
+    virtual bool Unlock()
+    {
+        printf("Unlocking surface\n");
+        lock = 0;
+        return true;
+    }
+
+    virtual void Blt(const Rect& destRect, VideoSurface* src, const Rect& srcRect, bool mask)
+    {
+        printf("Trying to blit\n");
+    }
+
+    virtual void FillRect(const Rect& rect, unsigned char color)
+    {
+        printf("Trying to fill rect\n");
+    }
+
+    void RenderSurface()
+    {
+        dmaCopy(surface, bgGetGfxPtr(bg3), 512 * 200);
+
+        swiWaitForVBlank();
+        bgUpdate();
+    }
+
+private:
+    char* surface;
+    char* windowSurface;
+    GBC_Enum flags;
+    int lock;
+};
+
+void Video_Render_Frame()
+{
+    if (frontSurface) {
+        frontSurface->RenderSurface();
+    }
+}
+
+/*
+** Video
+*/
+
+Video::Video()
+{
+}
+
+Video::~Video()
+{
+}
+
+Video& Video::Shared()
+{
+    static Video video;
+    return video;
+}
+
+VideoSurface* Video::CreateSurface(int w, int h, GBC_Enum flags)
+{
+    return new VideoSurfaceNDS(w, h, flags);
+}
