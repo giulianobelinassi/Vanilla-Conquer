@@ -23,6 +23,9 @@ static bool fs_initialized = false;
 /* Nintendo DS require its filesystem structures to be explicitely initialized. */
 bool maybe_initialize_fs()
 {
+    if (fs_initialized)
+        return true;
+
     if (!fatInitDefault()) {
         DBG_LOG("FATAL ERROR: Unable to initialize file system");
         swiWaitForVBlank();
