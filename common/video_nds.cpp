@@ -43,6 +43,22 @@
 #include "video.h"
 #include <cstdio>
 #include <nds.h>
+#include <stdarg.h>
+
+void pause(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    while (1) {
+        swiWaitForVBlank();
+        scanKeys();
+        int keys = keysDown();
+        if (keys & KEY_A)
+            break;
+    }
+}
 
 class SurfaceMonitorClassNDS : public SurfaceMonitorClass
 {
@@ -109,7 +125,7 @@ void create_chess_pattern(int w, int h, unsigned char* _dest, unsigned char c1, 
 bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
     powerOn(POWER_ALL);
-    defaultExceptionHandler();
+    //    defaultExceptionHandler();
 
     TIMER0_DATA = 0; // Set up the timer
     TIMER1_DATA = 0;
@@ -133,7 +149,6 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 
     // clear upper screen (black) instead of junk
     memset(BG_GFX, 1, 512 * 512);
-    create_chess_pattern(512, 512, (unsigned char*)bgGetGfxPtr(bg3), 0, 60);
 
     //dmaCopy(chess, bgGetGfxPtr(bg3), 512*200);
 
@@ -308,18 +323,18 @@ public:
         , lock(0)
     {
         if (w == 320 && h == 200) {
-            surface = (char*)malloc(512 * h);
-            if (!surface) {
-                printf("ERROR - Can't allocate surface buffer\n");
-                while (1)
-                    ;
-            }
-
-            create_chess_pattern(512, 200, (unsigned char*)surface, 0, 60);
 
             if (flags & GBC_VISIBLE) {
+                surface = (char*)bgGetGfxPtr(bg3);
                 windowSurface = surface;
                 frontSurface = this;
+            } else {
+                surface = (char*)malloc(320 * 200);
+                if (!surface) {
+                    printf("ERROR - Can't allocate surface buffer\n");
+                    while (1)
+                        ;
+                }
             }
         } else {
             swiWaitForVBlank();
@@ -333,23 +348,23 @@ public:
     {
         if (frontSurface == this) {
             frontSurface = NULL;
-        }
-        if (surface)
+        } else if (surface) {
             free(surface);
+        }
     }
 
     virtual void* GetData() const
     {
-        printf("GetData called\n");
         return surface;
     }
     virtual long GetPitch() const
     {
-        return 512;
+        if (frontSurface == this)
+            return 512;
+        return 320;
     }
     virtual bool IsAllocated() const
     {
-        printf("IsReadyToBlit\n");
         return false;
     }
 
@@ -359,19 +374,16 @@ public:
 
     virtual bool IsReadyToBlit()
     {
-        printf("IsReadyToBlit\n");
         return false;
     }
 
     virtual bool LockWait()
     {
-        printf("Awaiting surface lock\n");
         return (lock == 0);
     }
 
     virtual bool Unlock()
     {
-        printf("Unlocking surface\n");
         lock = 0;
         return true;
     }
@@ -388,8 +400,6 @@ public:
 
     void RenderSurface()
     {
-        dmaCopy(surface, bgGetGfxPtr(bg3), 512 * 200);
-
         swiWaitForVBlank();
         bgUpdate();
     }

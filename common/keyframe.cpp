@@ -477,7 +477,13 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
 unsigned short Get_Build_Frame_Count(void const* dataptr)
 {
     if (dataptr) {
+#ifdef _NDS
+        unsigned short var;
+        memcpy(&var, dataptr + offsetof(KeyFrameHeaderType, frames), sizeof(var));
+        return var;
+#else
         return (((KeyFrameHeaderType const*)dataptr)->frames);
+#endif
     }
     return (0);
 }
@@ -485,7 +491,13 @@ unsigned short Get_Build_Frame_Count(void const* dataptr)
 unsigned short Get_Build_Frame_X(void const* dataptr)
 {
     if (dataptr) {
+#ifdef _NDS
+        unsigned short var;
+        memcpy(&var, dataptr + offsetof(KeyFrameHeaderType, x), sizeof(var));
+        return var;
+#else
         return (((KeyFrameHeaderType const*)dataptr)->x);
+#endif
     }
     return (0);
 }
@@ -493,7 +505,13 @@ unsigned short Get_Build_Frame_X(void const* dataptr)
 unsigned short Get_Build_Frame_Y(void const* dataptr)
 {
     if (dataptr) {
+#ifdef _NDS
+        unsigned short var;
+        memcpy(&var, dataptr + offsetof(KeyFrameHeaderType, y), sizeof(var));
+        return var;
+#else
         return (((KeyFrameHeaderType const*)dataptr)->y);
+#endif
     }
     return (0);
 }
@@ -516,7 +534,13 @@ unsigned short Get_Build_Frame_Y(void const* dataptr)
 unsigned short Get_Build_Frame_Width(void const* dataptr)
 {
     if (dataptr) {
+#ifdef _NDS
+        unsigned short var;
+        memcpy(&var, dataptr + offsetof(KeyFrameHeaderType, width), sizeof(var));
+        return var;
+#else
         return (((KeyFrameHeaderType const*)dataptr)->width);
+#endif
     }
     return (0);
 }
@@ -539,21 +563,36 @@ unsigned short Get_Build_Frame_Width(void const* dataptr)
 unsigned short Get_Build_Frame_Height(void const* dataptr)
 {
     if (dataptr) {
+#ifdef _NDS
+        unsigned short var;
+        memcpy(&var, dataptr + offsetof(KeyFrameHeaderType, height), sizeof(var));
+        return var;
+#else
         return (((KeyFrameHeaderType const*)dataptr)->height);
+#endif
     }
     return (0);
 }
 
 bool Get_Build_Frame_Palette(void const* dataptr, void* palette)
 {
-    if (dataptr && (((KeyFrameHeaderType const*)dataptr)->flags & 1)) {
-        char const* ptr = (char const*)Add_Long_To_Pointer(
-            dataptr,
-            ((((long)sizeof(unsigned long) << 1) * ((KeyFrameHeaderType*)dataptr)->frames) + 16
-             + sizeof(KeyFrameHeaderType)));
+    if (dataptr) {
+        short flags;
+        unsigned short frames;
+#ifdef _NDS
+        memcpy(&flags, dataptr + offsetof(KeyFrameHeaderType, flags), sizeof(flags));
+        memcpy(&frames, dataptr + offsetof(KeyFrameHeaderType, frames), sizeof(frames));
+#else
+        flags = ((KeyFrameHeaderType*)dataptr)->flags;
+        frames = ((KeyFrameHeaderType*)dataptr)->frames;
+#endif
+        if (frames & 1) {
+            char const* ptr = (char const*)Add_Long_To_Pointer(
+                dataptr, ((((long)sizeof(unsigned long) << 1) * frames + 16 + sizeof(KeyFrameHeaderType))));
 
-        memcpy(palette, ptr, 768L);
-        return (true);
+            memcpy(palette, ptr, 768L);
+            return (true);
+        }
     }
     return (false);
 }

@@ -2520,6 +2520,7 @@ void CC_Draw_Line(int x, int y, int x1, int y1, unsigned char color, int frame, 
  * HISTORY:                                                                                    *
  *   02/21/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
+
 //#pragma off(unreferenced)
 void CC_Draw_Shape(void const* shapefile,
                    int shapenum,

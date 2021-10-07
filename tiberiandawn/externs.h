@@ -429,4 +429,6 @@ extern TheaterType LastTheater;
 
 extern bool ShareAllyVisibility;
 
+void pause(const char*, ...);
+
 #endif
