@@ -141,6 +141,11 @@ void Set_Palette_Color(void* palette, int color, void* data)
  *=========================================================================*/
 void Fade_Palette_To(void* palette1, unsigned int delay, void (*callback)())
 {
+#ifdef _NDS
+    /* TODO: Palette fading makes the DS hang.  Fix it.*/
+    return;
+#endif
+
     bool changed;        // Flag that palette has changed this tick.
     short jump;          // Gun values to jump per palette set.
     unsigned long timer; // Tick count timer used for timing.

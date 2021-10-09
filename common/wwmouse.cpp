@@ -321,7 +321,7 @@ void WWMouseClass::Low_Show_Mouse(int x, int y)
     State--;
 
 // ST - 1/3/2019 10:50AM
-#if !defined(REMASTER_BUILD) && !defined(SDL2_BUILD)
+#if !defined(REMASTER_BUILD) && !defined(SDL2_BUILD) && !defined(_NDS)
 
     //
     //	If the mouse is completely visible then draw it at its current

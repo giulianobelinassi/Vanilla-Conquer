@@ -348,7 +348,10 @@ static void Update_HWCursor()
         }
     }
 
-    oamSetXY(&oamMain, 0, hwcursor.X, hwcursor.Y);
+    const int x_scaled = (hwcursor.X * 256) / 320;
+    const int y_scaled = (hwcursor.Y * 256) / 320;
+
+    oamSetXY(&oamMain, 0, x_scaled, y_scaled);
     oamUpdate(&oamMain);
 }
 
@@ -365,10 +368,10 @@ void Get_Video_Mouse(int& x, int& y)
 
 void Move_Video_Mouse(int xrel, int yrel)
 {
-    if (hwcursor.Clip) {
-        hwcursor.X += xrel;
-        hwcursor.Y += yrel;
-    }
+    //if (hwcursor.Clip) {
+    hwcursor.X += xrel;
+    hwcursor.Y += yrel;
+    //}
 
     if (hwcursor.X >= 320) {
         hwcursor.X = 319;

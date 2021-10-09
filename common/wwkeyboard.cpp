@@ -59,6 +59,9 @@
 #include <SDL.h>
 #include "sdl_keymap.h"
 #endif
+#ifdef _NDS
+#include <nds.h>
+#endif
 #include "settings.h"
 
 #define ARRAY_SIZE(x) int(sizeof(x) / sizeof(x[0]))
@@ -609,6 +612,42 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             }
             TranslateMessage(&msg);
             DispatchMessageA(&msg);
+        }
+    }
+#elif defined(_NDS)
+    if (!Is_Buffer_Full()) {
+        int x, y;
+        unsigned short mkey = 0;
+        bool down = false;
+
+        scanKeys();
+        int keys = keysHeld();
+
+        if (keys & KEY_UP) {
+            Move_Video_Mouse(0, -1);
+        }
+        if (keys & KEY_DOWN) {
+            Move_Video_Mouse(0, 1);
+        }
+        if (keys & KEY_LEFT) {
+            Move_Video_Mouse(-1, 0);
+        }
+        if (keys & KEY_RIGHT) {
+            Move_Video_Mouse(1, 0);
+        }
+
+        if (keys & KEY_B) {
+            Get_Video_Mouse(x, y);
+            mkey = VK_LBUTTON;
+            down = true;
+        } else if (keys & KEY_Y) {
+            Get_Video_Mouse(x, y);
+            mkey = VK_RBUTTON;
+            down = true;
+        }
+        if (mkey == VK_LBUTTON || mkey == VK_RBUTTON) {
+            Put_Mouse_Message(mkey, x, y, false);
+            Put_Mouse_Message(mkey, x, y, true);
         }
     }
 #endif

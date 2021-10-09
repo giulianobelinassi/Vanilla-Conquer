@@ -10,15 +10,23 @@
 // GNU General Public License along with permitted additional restrictions
 // with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
 #include "fading.h"
+#include <string.h>
 
 void* Build_Fading_Table(void const* palette, void* dest, int color, int frac)
 {
+
     const int ALLOWED_COUNT = 16;
     const int ALLOWED_START = 256 - ALLOWED_COUNT;
 
     if (!palette || !dest) {
         return 0;
     }
+
+#ifdef _NDS
+    /* TODO: This function seems broken on DS. Fix it.  */
+    memcpy(dest, palette, 256);
+    return dest;
+#endif
 
     const unsigned char* pal = (const unsigned char*)palette;
     unsigned char* dst = (unsigned char*)dest;
