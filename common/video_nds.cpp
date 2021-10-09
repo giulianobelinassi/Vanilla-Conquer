@@ -324,35 +324,6 @@ void Wait_Blit(void)
 
 static void Update_HWCursor()
 {
-    const int w = hwcursor.W;
-    const int h = hwcursor.H;
-
-    uint8_t* src = (uint8_t*)hwcursor.Raw;
-    uint8_t* dst = (uint8_t*)hwcursor.Surface;
-
-    if (hwcursor.Raw != hwcursor.Last_Raw) {
-        hwcursor.Raw = hwcursor.Last_Raw;
-
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                for (int ii = 0; ii < 8; ii++) {
-                    for (int jj = 0; jj < 8; jj++) {
-                        int real_j = 8 * j + jj;
-                        int real_i = 8 * i + ii;
-
-                        if (real_j < w && real_i < h)
-                            dst[256 * i + 8 * ii + 64 * j + jj] = src[real_i * w + real_j];
-                    }
-                }
-            }
-        }
-    }
-
-    const int x_scaled = (hwcursor.X * 256) / 320;
-    const int y_scaled = (hwcursor.Y * 256) / 320;
-
-    oamSetXY(&oamMain, 0, x_scaled, y_scaled);
-    oamUpdate(&oamMain);
 }
 
 void Set_Video_Cursor_Clip(bool clipped)
@@ -395,7 +366,26 @@ void Set_Video_Cursor(void* cursor, int w, int h, int hotx, int hoty)
     hwcursor.HotX = hotx;
     hwcursor.HotY = hoty;
 
-    Update_HWCursor();
+    uint8_t* src = (uint8_t*)hwcursor.Raw;
+    uint8_t* dst = (uint8_t*)hwcursor.Surface;
+
+    if (hwcursor.Raw != hwcursor.Last_Raw) {
+        hwcursor.Raw = hwcursor.Last_Raw;
+
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                for (int ii = 0; ii < 8; ii++) {
+                    for (int jj = 0; jj < 8; jj++) {
+                        int real_j = 8 * j + jj;
+                        int real_i = 8 * i + ii;
+
+                        if (real_j < w && real_i < h)
+                            dst[256 * i + 8 * ii + 64 * j + jj] = src[real_i * w + real_j];
+                    }
+                }
+            }
+        }
+    }
 }
 
 /***********************************************************************************************
@@ -513,7 +503,13 @@ public:
     {
         swiWaitForVBlank();
         bgUpdate();
-        Update_HWCursor();
+
+        /* Update sprite representing the mouse cursor.  */
+        const int x_scaled = ((hwcursor.X - hwcursor.HotX) * 256) / 320;
+        const int y_scaled = ((hwcursor.Y - hwcursor.HotY) * 192) / 200;
+
+        oamSetXY(&oamMain, 0, x_scaled, y_scaled);
+        oamUpdate(&oamMain);
     }
 
 private:
