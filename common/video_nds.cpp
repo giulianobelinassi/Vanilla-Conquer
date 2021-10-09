@@ -41,6 +41,8 @@
 #include "gbuffer.h"
 #include "palette.h"
 #include "video.h"
+#include "video.h"
+#include "wwkeyboard.h"
 #include <cstdio>
 #include <nds.h>
 #include <stdarg.h>
@@ -59,6 +61,22 @@ void pause(const char* format, ...)
             break;
     }
 }
+
+static struct
+{
+    void* Raw;
+    void* Surface;
+
+    void* Last_Raw;
+
+    bool Clip;
+    int X;
+    int Y;
+    int W;
+    int H;
+    int HotX;
+    int HotY;
+} hwcursor;
 
 class SurfaceMonitorClassNDS : public SurfaceMonitorClass
 {
@@ -137,7 +155,7 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     bg3 = bgInit(3, BgType_Bmp8, BgSize_B8_512x512, 0, 0);
 
     vramSetBankA(VRAM_A_MAIN_BG_0x06000000); // same as VRAM_A_MAIN_BG
-    vramSetBankB(VRAM_B_MAIN_BG_0x06020000); // use second bank for main screen - 256 KiB
+    //vramSetBankB(VRAM_B_MAIN_BG_0x06020000); // use second bank for main screen - 256 KiB
 
     REG_BG3CNT = BG_BMP8_512x512;  // BG3 Control register, 8 bits
     REG_BG3PA = (320 * 256) / 256; //1 << 8;
@@ -147,13 +165,32 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     REG_BG3X = 0;
     REG_BG3Y = 0;
 
-    // clear upper screen (black) instead of junk
-    memset(BG_GFX, 1, 512 * 512);
-
-    //dmaCopy(chess, bgGetGfxPtr(bg3), 512*200);
-
     swiWaitForVBlank();
     bgUpdate();
+
+    vramSetBankF(VRAM_F_MAIN_SPRITE_0x06400000);
+    oamInit(&oamMain, SpriteMapping_1D_256, false);
+
+    hwcursor.Surface = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
+
+    hwcursor.X = 160;
+    hwcursor.Y = 100;
+
+    oamSet(&oamMain,
+           0,
+           hwcursor.X,
+           hwcursor.Y,
+           0,
+           0,
+           SpriteSize_32x32,
+           SpriteColorFormat_256Color,
+           hwcursor.Surface,
+           0,
+           false,
+           false,
+           false,
+           false,
+           false);
 
     if (w != 320 || h != 200 || bits_per_pixel != 8)
         return false;
@@ -262,6 +299,8 @@ void Set_DD_Palette(void* palette)
 
         BG_PALETTE[i] = RGB8(r, g, b);
     }
+
+    dmaCopy(BG_PALETTE, SPRITE_PALETTE, 256);
 }
 
 /***********************************************************************************************
@@ -283,8 +322,77 @@ void Wait_Blit(void)
 {
 }
 
+static void Update_HWCursor()
+{
+    const int w = hwcursor.W;
+    const int h = hwcursor.H;
+
+    uint8_t* src = (uint8_t*)hwcursor.Raw;
+    uint8_t* dst = (uint8_t*)hwcursor.Surface;
+
+    if (hwcursor.Raw != hwcursor.Last_Raw) {
+        hwcursor.Raw = hwcursor.Last_Raw;
+
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                for (int ii = 0; ii < 8; ii++) {
+                    for (int jj = 0; jj < 8; jj++) {
+                        int real_j = 8 * j + jj;
+                        int real_i = 8 * i + ii;
+
+                        if (real_j < w && real_i < h)
+                            dst[256 * i + 8 * ii + 64 * j + jj] = src[real_i * w + real_j];
+                    }
+                }
+            }
+        }
+    }
+
+    oamSetXY(&oamMain, 0, hwcursor.X, hwcursor.Y);
+    oamUpdate(&oamMain);
+}
+
 void Set_Video_Cursor_Clip(bool clipped)
 {
+    hwcursor.Clip = clipped;
+}
+
+void Get_Video_Mouse(int& x, int& y)
+{
+    x = hwcursor.X;
+    y = hwcursor.Y;
+}
+
+void Move_Video_Mouse(int xrel, int yrel)
+{
+    if (hwcursor.Clip) {
+        hwcursor.X += xrel;
+        hwcursor.Y += yrel;
+    }
+
+    if (hwcursor.X >= 320) {
+        hwcursor.X = 319;
+    } else if (hwcursor.X < 0) {
+        hwcursor.X = 0;
+    }
+
+    if (hwcursor.Y >= 200) {
+        hwcursor.Y = 199;
+    } else if (hwcursor.Y < 0) {
+        hwcursor.Y = 0;
+    }
+}
+
+void Set_Video_Cursor(void* cursor, int w, int h, int hotx, int hoty)
+{
+
+    hwcursor.Raw = cursor;
+    hwcursor.W = w;
+    hwcursor.H = h;
+    hwcursor.HotX = hotx;
+    hwcursor.HotY = hoty;
+
+    Update_HWCursor();
 }
 
 /***********************************************************************************************
@@ -402,6 +510,7 @@ public:
     {
         swiWaitForVBlank();
         bgUpdate();
+        Update_HWCursor();
     }
 
 private:
