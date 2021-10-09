@@ -205,29 +205,12 @@ int DLL_Startup(const char* command_line_in)
 #endif // REMASTER_BUILD
 
 #ifdef _NDS
-volatile int frame = 0;
-
-void Vblank()
-{
-    frame++;
-}
-
 void Disable_Uncompressed_Shapes();
 
 int init_ds(void)
 {
-    irqSet(IRQ_VBLANK, Vblank);
-
+    defaultExceptionHandler();
     consoleDemoInit();
-#if 0
-    while (1) {
-        swiWaitForVBlank();
-        scanKeys();
-        int keys = keysDown();
-        if (keys & (KEY_START | KEY_A))
-            break;
-    }
-#endif
     return 0;
 }
 #endif

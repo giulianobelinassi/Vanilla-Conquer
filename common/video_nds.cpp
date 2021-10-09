@@ -165,7 +165,6 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     REG_BG3X = 0;
     REG_BG3Y = 0;
 
-    swiWaitForVBlank();
     bgUpdate();
 
     vramSetBankF(VRAM_F_MAIN_SPRITE_0x06400000);
@@ -499,7 +498,7 @@ public:
         printf("Trying to fill rect\n");
     }
 
-    void RenderSurface()
+    inline void RenderSurface()
     {
         swiWaitForVBlank();
         bgUpdate();

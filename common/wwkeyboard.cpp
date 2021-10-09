@@ -616,37 +616,61 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
     }
 #elif defined(_NDS)
     if (!Is_Buffer_Full()) {
-        int x, y;
+        static uint32_t keys_old = 0;
+
+        int x = 0, y = 0;
         unsigned short mkey = 0;
         bool down = false;
+        bool up = false;
 
-        scanKeys();
-        int keys = keysHeld();
+        /* Calling keysDown() and keysUp() slows down the game too much.
+           Use keysHeld as it query data directly from the ARM7 chip.  */
 
-        if (keys & KEY_UP) {
-            Move_Video_Mouse(0, -1);
+        uint32_t keys_current = keysCurrent();
+        uint32_t keys_down = keys_current & ~keys_old;
+        uint32_t keys_up = (keys_current ^ keys_old) & (~keys_current);
+        keys_old = keys_current;
+
+        if (keys_current & KEY_UP) {
+            y--;
+        } else if (keys_current & KEY_DOWN) {
+            y++;
         }
-        if (keys & KEY_DOWN) {
-            Move_Video_Mouse(0, 1);
+        if (keys_current & KEY_LEFT) {
+            x--;
+        } else if (keys_current & KEY_RIGHT) {
+            x++;
         }
-        if (keys & KEY_LEFT) {
-            Move_Video_Mouse(-1, 0);
-        }
-        if (keys & KEY_RIGHT) {
-            Move_Video_Mouse(1, 0);
+        if (x || y) {
+            Move_Video_Mouse(x, y);
         }
 
-        if (keys & KEY_B) {
+        if (keys_down & KEY_B) {
             Get_Video_Mouse(x, y);
             mkey = VK_LBUTTON;
             down = true;
-        } else if (keys & KEY_Y) {
+
+        } else if (keys_down & KEY_Y) {
             Get_Video_Mouse(x, y);
             mkey = VK_RBUTTON;
             down = true;
         }
-        if (mkey == VK_LBUTTON || mkey == VK_RBUTTON) {
+
+        if (down) {
             Put_Mouse_Message(mkey, x, y, false);
+        }
+
+        if (keys_up & KEY_B) {
+            Get_Video_Mouse(x, y);
+            mkey = VK_LBUTTON;
+            up = true;
+        } else if (keys_up & KEY_Y) {
+            Get_Video_Mouse(x, y);
+            mkey = VK_RBUTTON;
+            up = true;
+        }
+
+        if (up) {
             Put_Mouse_Message(mkey, x, y, true);
         }
     }
