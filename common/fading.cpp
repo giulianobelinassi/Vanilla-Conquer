@@ -14,19 +14,12 @@
 
 void* Build_Fading_Table(void const* palette, void* dest, int color, int frac)
 {
-
     const int ALLOWED_COUNT = 16;
     const int ALLOWED_START = 256 - ALLOWED_COUNT;
 
     if (!palette || !dest) {
         return 0;
     }
-
-#ifdef _NDS
-    /* TODO: This function seems broken on DS. Fix it.  */
-    memcpy(dest, palette, 256);
-    return dest;
-#endif
 
     const unsigned char* pal = (const unsigned char*)palette;
     unsigned char* dst = (unsigned char*)dest;
@@ -35,7 +28,7 @@ void* Build_Fading_Table(void const* palette, void* dest, int color, int frac)
         frac = 255;
     }
 
-    int fraction = frac >> 1;
+    unsigned int fraction = frac >> 1;
     unsigned palindex = color * 3;
     unsigned char targetred = pal[palindex++];
     unsigned char targetgreen = pal[palindex++];
@@ -47,7 +40,7 @@ void* Build_Fading_Table(void const* palette, void* dest, int color, int frac)
     for (int i = 1; i < 256; ++i) {
         // Decide what the "perfect" match would be for our adjusted color.
         palindex = i * 3;
-        signed char original = pal[palindex++];
+        unsigned char original = pal[palindex++];
         signed short tmp = ((original - targetred) * fraction) << 1;
         unsigned char idealred = original - (tmp >> 8);
         original = pal[palindex++];
