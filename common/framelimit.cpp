@@ -5,6 +5,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#elif defined(_NDS)
+#include <nds.h>
 #endif
 
 #include "mssleep.h"
@@ -15,10 +17,11 @@ extern WWMouseClass* WWMouse;
 void Video_Render_Frame();
 #endif
 
+#ifndef _NDS
 void Frame_Limiter(bool force_render)
 {
     static auto frame_start = std::chrono::steady_clock::now();
-#if defined(SDL2_BUILD) || defined(_NDS)
+#if defined(SDL2_BUILD)
     static auto render_avg = 0;
 
     auto render_start = std::chrono::steady_clock::now();
@@ -39,7 +42,7 @@ void Frame_Limiter(bool force_render)
 #endif
 
     if (Settings.Video.FrameLimit > 0) {
-#if defined(SDL2_BUILD) || defined(_NDS)
+#if defined(SDL2_BUILD)
         auto frame_end = render_end;
 #else
         auto frame_end = std::chrono::steady_clock::now();
@@ -53,3 +56,32 @@ void Frame_Limiter(bool force_render)
         frame_start = std::chrono::steady_clock::now();
     }
 }
+#else /* defined _NDS */
+
+void Update_HWCursor();
+
+void Frame_Limiter(bool force_render)
+{
+    static unsigned ticks = 0;
+    static unsigned ticks_start;
+
+    if (ticks == 0) {
+        timerStart(1, ClockDivider_1024, 0, NULL);
+        ticks += timerElapsed(1);
+        ticks_start = ticks;
+    }
+
+    ticks += timerElapsed(1);
+    unsigned now = ticks;
+    unsigned ticks_dt = now - ticks_start;
+
+    if (ticks_dt < 30) {
+        // If FPS is too high the mouse glitches out, so we force
+        // VSync in this case.
+        swiWaitForVBlank();
+    }
+    Update_HWCursor();
+    //Video_Render_Frame();
+    ticks_start = ticks;
+}
+#endif

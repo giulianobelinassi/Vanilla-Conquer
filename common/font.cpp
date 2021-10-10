@@ -409,7 +409,9 @@ long Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, 
                 // Prepare variables for drawing
                 x += FontXSpacing + char_width;
                 int next_line = pitch - char_width;
-                const unsigned char* char_data = reinterpret_cast<const unsigned char*>(FontPtr) + datalist[char_num];
+                unsigned short dlist;
+                memcpy(&dlist, datalist + char_num, sizeof(unsigned short));
+                const unsigned char* char_data = reinterpret_cast<const unsigned char*>(FontPtr) + dlist;
                 short char_lle;
                 memcpy(&char_lle, linelist + char_num, sizeof(short));
                 int char_ypos = char_lle & 0xFF;

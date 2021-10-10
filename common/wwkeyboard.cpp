@@ -649,11 +649,12 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             Get_Video_Mouse(x, y);
             mkey = VK_LBUTTON;
             down = true;
-
         } else if (keys_down & KEY_Y) {
             Get_Video_Mouse(x, y);
             mkey = VK_RBUTTON;
             down = true;
+        } else if (keys_down & KEY_X) {
+            Put_Key_Message(DVK_ENTER, false);
         }
 
         if (down) {
@@ -668,6 +669,8 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             Get_Video_Mouse(x, y);
             mkey = VK_RBUTTON;
             up = true;
+        } else if (keys_down & KEY_X) {
+            Put_Key_Message(DVK_ENTER, true);
         }
 
         if (up) {

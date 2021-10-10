@@ -253,7 +253,7 @@ unsigned int Get_Free_Video_Memory(void)
  *=============================================================================================*/
 unsigned Get_Video_Hardware_Capabilities(void)
 {
-    return VIDEO_BLITTER;
+    return 0;
 }
 
 /***********************************************************************************************
@@ -318,10 +318,6 @@ void Set_DD_Palette(void* palette)
  *=============================================================================================*/
 
 void Wait_Blit(void)
-{
-}
-
-static void Update_HWCursor()
 {
 }
 
@@ -407,6 +403,16 @@ SurfaceMonitorClass::SurfaceMonitorClass()
     SurfacesRestored = false;
 }
 
+void Update_HWCursor()
+{
+    /* Update sprite representing the mouse cursor.  */
+    const int x_scaled = ((hwcursor.X - hwcursor.HotX) * 256) / 320;
+    const int y_scaled = ((hwcursor.Y - hwcursor.HotY) * 192) / 200;
+
+    oamSetXY(&oamMain, 0, x_scaled, y_scaled);
+    oamUpdate(&oamMain);
+}
+
 /*
 ** VideoSurfaceDDraw
 */
@@ -420,7 +426,6 @@ public:
     VideoSurfaceNDS(int w, int h, GBC_Enum flags)
         : flags(flags)
         , windowSurface(nullptr)
-        , lock(0)
     {
         if (w == 320 && h == 200) {
 
@@ -479,12 +484,11 @@ public:
 
     virtual bool LockWait()
     {
-        return (lock == 0);
+        return true;
     }
 
     virtual bool Unlock()
     {
-        lock = 0;
         return true;
     }
 
@@ -500,7 +504,7 @@ public:
 
     inline void RenderSurface()
     {
-        swiWaitForVBlank();
+        //swiWaitForVBlank();
         bgUpdate();
 
         /* Update sprite representing the mouse cursor.  */
@@ -515,7 +519,6 @@ private:
     char* surface;
     char* windowSurface;
     GBC_Enum flags;
-    int lock;
 };
 
 void Video_Render_Frame()

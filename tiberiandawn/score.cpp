@@ -1627,7 +1627,7 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
                 }
             }
         }
-    } while (key != KN_RETURN && key != KN_KEYPAD_RETURN);
+    } while (key != KN_RETURN && key != KN_KEYPAD_RETURN && key != VK_LBUTTON);
 }
 
 void Animate_Cursor(int pos, int ypos)
