@@ -631,19 +631,8 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
         uint32_t keys_up = (keys_current ^ keys_old) & (~keys_current);
         keys_old = keys_current;
 
-        if (keys_current & KEY_UP) {
-            y--;
-        } else if (keys_current & KEY_DOWN) {
-            y++;
-        }
-        if (keys_current & KEY_LEFT) {
-            x--;
-        } else if (keys_current & KEY_RIGHT) {
-            x++;
-        }
-        if (x || y) {
-            Move_Video_Mouse(x, y);
-        }
+        // Mouse update is in video_nds.cpp.  We use a vblank interrupt
+        // handler for that so the cursor still moves smooth on low framerate.
 
         if (keys_down & KEY_B) {
             Get_Video_Mouse(x, y);

@@ -140,9 +140,30 @@ void create_chess_pattern(int w, int h, unsigned char* _dest, unsigned char c1, 
 #undef DEST
 }
 
+void VBlank_Mouse()
+{
+    uint32_t keys_current = keysCurrent();
+    int x = 0, y = 0;
+
+    if (keys_current & KEY_UP) {
+        y -= 2;
+    } else if (keys_current & KEY_DOWN) {
+        y += 2;
+    }
+    if (keys_current & KEY_LEFT) {
+        x -= 2;
+    } else if (keys_current & KEY_RIGHT) {
+        x += 2;
+    }
+    if (x || y) {
+        Move_Video_Mouse(x, y);
+    }
+}
+
 bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
     powerOn(POWER_ALL);
+    irqSet(IRQ_VBLANK, VBlank_Mouse);
     //    defaultExceptionHandler();
 
     TIMER0_DATA = 0; // Set up the timer
