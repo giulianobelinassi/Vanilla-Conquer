@@ -101,17 +101,27 @@ Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x
         } else {
             if (((uintptr_t)src) % 4 == 0) {
                 while (h-- != 0) {
-                    //memcpy(dst, src, w);
                     bus = (bus + 1) % 3;
 
+                    /* Flush the cache here, else we get artifacts on the
+                       screen.  It only happens on real hardware.*/
+                    DC_FlushRange(src, w);
                     dmaCopyWordsAsynch(bus, src, dst, w);
+                    dst += dst_pitch;
+                    src += src_pitch;
+                }
+            } else if (((uintptr_t)src) % 2 == 0) {
+                while (h-- != 0) {
+                    bus = (bus + 1) % 3;
+
+                    /* For some reason flushing is not required here.  */
+                    dmaCopyHalfWordsAsynch(bus, src, dst, w);
                     dst += dst_pitch;
                     src += src_pitch;
                 }
             } else {
                 while (h-- != 0) {
-                    //memcpy(dst, src, w);
-
+                    /* For some reason flushing is not required here.  */
                     dmaCopyAsynch(src, dst, w);
                     dst += dst_pitch;
                     src += src_pitch;
