@@ -38,8 +38,9 @@ typedef enum
     SCOMP_SOS = 99      // SOS frame compression.
 } SCompressType;
 
-// Tracker class. Represent a track in game.
+static unsigned int SoundTicks = 0;
 
+// Tracker class. Represent a track in game.
 class SoundTracker
 {
 public:
@@ -85,9 +86,12 @@ public:
     {
         // The Nintendo DS has no means of verifying if the sample is playing
         // on the ARM9 chip.  If we want to do that, we have to move this code
-        // to the ARM7 chip, which means future work.  So we always return no.
+        // to the ARM7 chip, which means future work.  So we always return yes.
 
-        return false;
+        if (SoundTicks - Ticks > 3 * 1000 * 1000)
+            return false;
+
+        return true;
     }
 
     inline void Stop_Sample()
@@ -110,6 +114,8 @@ public:
         int size = SampleSize;
         unsigned char volume = Volume / 2;
         unsigned char panloc = ((int)panloc + 32767) / 517;
+        SoundTicks += timerTick(0);
+        Ticks = SoundTicks;
 
         SoundHandle = soundPlaySample(sample, format, size, freq, volume, panloc, false, 0);
 
@@ -162,6 +168,7 @@ private:
     int SoundHandle;           // The Nintendo DS sound handle.
     void* Sample;              // Playable sample. May be compressed or not.
     int SampleSize;            // Size of the Sample.
+    unsigned int Ticks;        // Tick in which the current sample was introduced.
 };
 
 class SoundTrackers
@@ -171,9 +178,6 @@ public:
     {
         DigiHandle = INVALID_FILE_HANDLE;
         AudioInitialized = false;
-
-        // The following variables should not be needed.
-        _LastUsedTracker = 0;
     }
 
     void Initialize_Trackers()
@@ -214,28 +218,28 @@ public:
     inline int Get_Free_Sound_Handle(int priority)
     {
         int i;
+        // Not found. Get with least priority.
+        unsigned int min_priority = 255;
+        int min_handle = 0;
 
         // Look in all trackers for a free slot.
         for (i = MAX_SAMPLE_TRACKERS - 1; i >= 0; --i) {
             SoundTracker* st = Get_Sample_Tracker(i);
+            unsigned char current_priority = st->Get_Priority();
 
             if (!st->Is_Sample_Playing()) {
                 return i;
             }
-        }
 
-        // Not found. Get with least priority.
-        unsigned char min_priority = 255;
-        int min_handle = -1;
-        SoundTracker* st;
-        for (i = MAX_SAMPLE_TRACKERS - 1; i >= 0; --i) {
-            st = Get_Sample_Tracker(i);
-            unsigned char priority = st->Get_Priority();
-
-            if (priority < min_priority) {
-                min_handle = i;
-                min_priority = priority;
+            if (priority > current_priority) {
+                return i;
             }
+            /*
+            if (current_priority < min_priority) {
+                min_handle = i;
+                min_priority = current_priority;
+            }
+*/
         }
 
         // Now that the lowest priority tracker have been found, return it.
@@ -246,13 +250,22 @@ public:
     {
         // Since Nintendo DS has no means to check if a sound is playing, we do a
         // simple round-robin on the trackers.
-        _LastUsedTracker = (_LastUsedTracker + 1) % MAX_SAMPLE_TRACKERS;
-
-        SoundTracker* st = Get_Sample_Tracker(_LastUsedTracker);
+        int free_tracker = Get_Free_Sound_Handle(priority);
+        SoundTracker* st = Get_Sample_Tracker(free_tracker);
 
         // Stop sound if currently playing
         st->Stop_Sample();
         return st->Play_Sample(sample, priority, volume, panloc);
+    }
+
+    void Print_Priorities()
+    {
+        for (int i = 0; i < MAX_SAMPLE_TRACKERS; i++) {
+            SoundTracker* st = Get_Sample_Tracker(i);
+
+            printf("%d ", (int)st->Get_Priority());
+        }
+        printf("\n");
     }
 
 private:
@@ -260,8 +273,9 @@ private:
     bool AudioInitialized;
     int DigiHandle;
 
-    // Hack for now.
-    int _LastUsedTracker;
+public:
+    // Timer hack to determine if sample spent too much time in queue.
+    static unsigned int Ticks;
 };
 
 static SoundTrackers Trackers;
