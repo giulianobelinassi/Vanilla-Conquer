@@ -6,8 +6,8 @@ set(DEVKITPRO $ENV{DEVKITPRO})
 
 set(CMAKE_C_COMPILER "${DEVKITARM}/bin/arm-none-eabi-gcc")
 set(CMAKE_CXX_COMPILER "${DEVKITARM}/bin/arm-none-eabi-g++")
-set(CMAKE_AR "${DEVKITARM}/bin/arm-none-eabi-gcc-ar" CACHE STRING "")
-set(CMAKE_RANLIB "${DEVKITARM}/bin/arm-none-eabi-gcc-ranlib" CACHE STRING "")
+set(CMAKE_AR "${DEVKITARM}/bin/arm-none-eabi-gcc-ar")
+set(CMAKE_RANLIB "${DEVKITARM}/bin/arm-none-eabi-gcc-ranlib")
 set(NDSTOOL "${DEVKITARM}/bin/ndstool")
 
 set(CMAKE_FIND_ROOT_PATH ${DEVKITPRO})

@@ -13,17 +13,16 @@
 #include "graphicsviewport.h"
 #include <algorithm>
 #include <string.h>
+#include <nds.h>
+#include <stdio.h>
 
-int Linear_Blit_To_Linear(void* thisptr,
-                          void* dest,
-                          int src_x,
-                          int src_y,
-                          int dst_x,
-                          int dst_y,
-                          int w,
-                          int h,
-                          int use_key)
+// This function is optimized for the Nintendo DS.  Huge performance increase
+// when compared with the default from the default one.
+
+int __attribute__((optimize("Ofast"))) __attribute__((hot))
+Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x, int dst_y, int w, int h, int use_key)
 {
+    static int bus = 0;
     GraphicViewPortClass& src_vp = *static_cast<GraphicViewPortClass*>(thisptr);
     GraphicViewPortClass& dst_vp = *static_cast<GraphicViewPortClass*>(dest);
     unsigned char* src = reinterpret_cast<unsigned char*>(src_vp.Get_Offset());
@@ -50,7 +49,7 @@ int Linear_Blit_To_Linear(void* thisptr,
 
     // If src is before dst, we run the risk of overlapping memory regions so we
     // need to move src and dst to the last line and work backwards
-    if (src < dst) {
+    if (src < dst && dst < src + (h - 1) * src_pitch) {
         unsigned char* esrc = src + (h - 1) * src_pitch;
         unsigned char* edst = dst + (h - 1) * dst_pitch;
         if (use_key) {
@@ -68,7 +67,19 @@ int Linear_Blit_To_Linear(void* thisptr,
             }
         } else {
             while (h-- != 0) {
-                memmove(edst, esrc, w);
+                if (dst < src + w) {
+                    int length = w;
+                    edst += length;
+                    esrc += length;
+
+                    while (length-- > 0) {
+                        *--edst = *--esrc;
+                    }
+                } else {
+                    dmaCopyWordsAsynch(bus, esrc, edst, w);
+                    bus = (bus + 1) % 3;
+                }
+
                 edst -= dst_pitch;
                 esrc -= src_pitch;
             }
@@ -88,10 +99,33 @@ int Linear_Blit_To_Linear(void* thisptr,
                 src += src_pitch;
             }
         } else {
-            while (h-- != 0) {
-                memmove(dst, src, w);
-                dst += dst_pitch;
-                src += src_pitch;
+            if (((uintptr_t)src) % 4 == 0) {
+                while (h-- != 0) {
+                    bus = (bus + 1) % 3;
+
+                    /* Flush the cache here, else we get artifacts on the
+                       screen.  It only happens on real hardware.*/
+                    DC_FlushRange(src, w);
+                    dmaCopyWordsAsynch(bus, src, dst, w);
+                    dst += dst_pitch;
+                    src += src_pitch;
+                }
+            } else if (((uintptr_t)src) % 2 == 0) {
+                while (h-- != 0) {
+                    bus = (bus + 1) % 3;
+
+                    /* For some reason flushing is not required here.  */
+                    dmaCopyHalfWordsAsynch(bus, src, dst, w);
+                    dst += dst_pitch;
+                    src += src_pitch;
+                }
+            } else {
+                while (h-- != 0) {
+                    /* For some reason flushing is not required here.  */
+                    dmaCopyAsynch(src, dst, w);
+                    dst += dst_pitch;
+                    src += src_pitch;
+                }
             }
         }
     }

@@ -54,10 +54,6 @@ HINSTANCE ProgramInstance;
 #define vc_chdir(x) chdir(x)
 #endif
 
-#ifdef _NDS
-#include <nds.h>
-#endif
-
 extern int ReadyToQuit;
 void Read_Setup_Options(RawFileClass* config_file);
 
@@ -204,23 +200,8 @@ int DLL_Startup(const char* command_line_in)
 }
 #endif // REMASTER_BUILD
 
-#ifdef _NDS
-void Disable_Uncompressed_Shapes();
-
-int init_ds(void)
-{
-    defaultExceptionHandler();
-    consoleDemoInit();
-    return 0;
-}
-#endif
-
 int main(int argc, char** argv)
 {
-#ifdef _NDS
-    init_ds();
-#endif
-
     UtfArgs args(argc, argv);
     CCDebugString("C&C95 - Starting up.\n");
 
@@ -244,14 +225,7 @@ int main(int argc, char** argv)
     /*
     **	Remember the current working directory and drive.
     */
-    const char* files;
-#ifdef _NDS
-    files = "/vanillatd";
-#else
-    files = args.ArgV[0];
-#endif
-
-    Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", files);
+    Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", args.ArgV[0]);
     vc_chdir(Paths.Data_Path());
     CDFileClass::Refresh_Search_Drives();
 
@@ -623,7 +597,6 @@ void Read_Setup_Options(RawFileClass* config_file)
     */
     VideoBackBufferAllowed = ini.Get_Bool("Options", "VideoBackBuffer", true);
     AllowHardwareBlitFills = ini.Get_Bool("Options", "HardwareFills", true);
-
     /*
     ** See if an alternative socket number has been specified
     */

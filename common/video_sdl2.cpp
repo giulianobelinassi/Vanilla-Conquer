@@ -826,14 +826,6 @@ void Video_Render_Frame()
     }
 }
 
-void pause(const char*, ...)
-{
-    char buffer[128];
-    fgets(buffer, sizeof(buffer), stdin);
-
-    return;
-}
-
 /*
 ** Video
 */
