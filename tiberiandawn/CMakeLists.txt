@@ -234,7 +234,8 @@ if(BUILD_VANILLATD)
         # Generate Nintendo DS ROM
         add_custom_command(TARGET VanillaTD
                 POST_BUILD
-                COMMAND ${NDSTOOL} ARGS -c ../vanillatd.nds -9 ../vanillatd -b ${DEVKITPRO}/libnds/icon.bmp "VanillaTD")
+                COMMAND ${NDSTOOL} ARGS -c ../vanillatd.nds -9 ../vanillatd -7 ../arm7.elf -b ${DEVKITPRO}/libnds/icon.bmp "VanillaTD"
+                DEPENDS arm7.elf)
     endif()
 
 
