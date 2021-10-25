@@ -3,6 +3,11 @@ set(GIT_PRE_CONFIGURE_FILE "gitinfo.cpp.in")
 set(GIT_POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/gitinfo.cpp")
 include(GitWatcher)
 
+if (NDS)
+    # This folder contains ARM9 code.
+    add_definitions(-DARM9)
+endif()
+
 set(COMMON_SRC
     ${GIT_POST_CONFIGURE_FILE}
     _diptabl.cpp
