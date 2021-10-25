@@ -51,6 +51,8 @@ void powerButtonCB()
     exitflag = true;
 }
 
+void installUser01FIFO();
+
 int main()
 {
     // clear sound registers
@@ -73,6 +75,8 @@ int main()
 
     //installWifiFIFO();
     installSoundFIFO();
+
+    installUser01FIFO();
 
     installSystemFIFO();
 
