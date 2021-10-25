@@ -25,23 +25,14 @@ set(NDS TRUE)
 
 SET(BUILD_SHARED_LIBS OFF CACHE INTERNAL "Shared libs not available" )
 
-add_definitions(-DARM9 -D_NDS)
-
-set(ARCH "-march=armv5te -mtune=arm946e-s")
-set(CMAKE_C_FLAGS " -fomit-frame-pointer -fno-rtti -fno-exceptions -ffast-math" CACHE STRING "C flags")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C++ flags")
-set(CMAKE_EXE_LINKER_FLAGS "-specs=ds_arm9.specs -g -mthumb -mthumb-interwork -Wl,-Map,vanilla.map")
+add_definitions(-D_NDS)
 
 # Define paths to include libraries
 include_directories("${DEVKITPRO}/libnds/include")
 
-# Define paths to libraries.
+# Define paths to libraries. Use link_libraries, as link_directories don't
+# seem to work.
 link_libraries("-L${DEVKITARM}/lib")
 link_libraries("-L${DEVKITARM}/arm-none-eabi/lib")
 link_libraries("-L${DEVKITPRO}/libnds/lib")
 link_libraries("-L${DEVKITPRO}/libgba/lib")
-
-# Link with those libraries
-link_libraries("-lc")    # C library
-link_libraries("-lfat")
-link_libraries("-lnds9")

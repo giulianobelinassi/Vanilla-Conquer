@@ -137,6 +137,25 @@ if(OPENAL)
     set(DSOUND OFF)
 endif()
 
+if(NDS)
+    # This directory contains code that will run on the ARM7 chip. So we don't
+    # define the arch variables until this directory has already been compiled.
+    add_subdirectory(arm7)
+
+    # The code below will run on ARM9 chip.
+    add_definitions(-DARM9)
+
+    set(ARCH "-mthumb -mthumb-interwork -march=armv5te -mtune=arm946e-s")
+    set(CMAKE_C_FLAGS "${ARCH} ${CMAKE_C_CFLAGS} -fomit-frame-pointer -fno-rtti -fno-exceptions -ffast-math")
+    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -specs=ds_arm9.specs -mthumb -mthumb-interwork -Wl,-Map,vanilla.map")
+
+    # Link with those libraries.
+    link_libraries("-lc")    # C library
+    link_libraries("-lfat")
+    link_libraries("-lnds9")
+endif()
+
 if(BUILD_TESTS)
     # Tests need to respect some options so need to occur after the options are set.
     enable_testing()
