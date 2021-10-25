@@ -1,5 +1,6 @@
 #include "audio.h"
 #include "memflag.h"
+#include "sound_arm9.h"
 #include <nds.h>
 #include <cstdio>
 #include <limits.h>
@@ -67,14 +68,14 @@ public:
         return false;
     }
 
-    static SoundFormat DS_Sound_Format(SCompressType type, unsigned char bits)
+    static NDS_Sound::SoundFormat DS_Sound_Format(SCompressType type, unsigned char bits)
     {
         if (type == SCOMP_SOS) {
-            return SoundFormat_ADPCM;
+            return NDS_Sound::SoundFormat_ADPCM;
         } else if (bits == 16) {
-            return SoundFormat_16Bit;
+            return NDS_Sound::SoundFormat_16Bit;
         }
-        return SoundFormat_8Bit;
+        return NDS_Sound::SoundFormat_8Bit;
     }
 
     inline void* Get_Sample()
@@ -97,7 +98,7 @@ public:
     inline void Stop_Sample()
     {
         if (SoundHandle >= 0)
-            soundKill(SoundHandle);
+            NDS_Sound::soundKill(SoundHandle);
     }
 
     inline unsigned char Get_Priority()
@@ -109,7 +110,7 @@ public:
     {
         // Play sound in system.
         void* sample = Sample;
-        SoundFormat format = DS_Sound_Format((hwuncompress) ? Compression : SCOMP_NONE, Bits);
+        NDS_Sound::SoundFormat format = DS_Sound_Format((hwuncompress) ? Compression : SCOMP_NONE, Bits);
         unsigned short freq = Frequency;
         int size = SampleSize;
         unsigned char volume = Volume / 2;
@@ -117,7 +118,7 @@ public:
         SoundTicks += timerTick(0);
         Ticks = SoundTicks;
 
-        SoundHandle = soundPlaySample(sample, format, size, freq, volume, panloc, false, 0);
+        SoundHandle = NDS_Sound::soundPlaySample(sample, format, size, freq, volume, panloc, false, 0);
 
         return SoundHandle;
     }
@@ -321,7 +322,7 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
     CALLED;
 
     // Initialize Nintendo DS sound system.
-    soundEnable();
+    NDS_Sound::soundEnable();
 
     // Set Global structures required by game's API.
     SoundType = SFX_ALFX;
