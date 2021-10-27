@@ -28,6 +28,9 @@
 
 ---------------------------------------------------------------------------------*/
 #include <nds.h>
+#include "printf.h"
+
+//int sprintf(char *dst, const char *fmt, ...);
 
 // We don't support network yet.
 #if 0
@@ -52,6 +55,8 @@ void powerButtonCB()
 }
 
 void installUser01FIFO();
+
+extern "C" void nocashWrite(const char* str, int len);
 
 int main()
 {

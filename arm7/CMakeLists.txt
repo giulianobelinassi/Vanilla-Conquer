@@ -8,6 +8,7 @@ set(CMAKE_EXE_LINKER_FLAGS "-specs=ds_arm7.specs -mthumb -mthumb-interwork  -Wl,
 set(ARM7_SRC
     main.cpp
     audio.cpp
+    printf.cpp
 )
 
 # Link with those libraries
