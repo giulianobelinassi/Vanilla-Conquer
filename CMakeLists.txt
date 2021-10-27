@@ -145,7 +145,7 @@ if(NDS)
     # The code below will run on ARM9 chip.
     add_definitions(-DARM9)
 
-    set(ARCH "-mthumb -mthumb-interwork -march=armv5te -mtune=arm946e-s")
+    set(ARCH "-mthumb -mthumb-interwork -mcpu=arm946e-s -mtune=arm946e-s")
     set(CMAKE_C_FLAGS "${ARCH} ${CMAKE_C_CFLAGS} -fomit-frame-pointer -fno-rtti -fno-exceptions -ffast-math")
     set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -specs=ds_arm9.specs -mthumb -mthumb-interwork -Wl,-Map,vanilla.map")
