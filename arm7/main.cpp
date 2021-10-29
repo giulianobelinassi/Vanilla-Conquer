@@ -58,6 +58,10 @@ void installUser01FIFO();
 
 extern "C" void nocashWrite(const char* str, int len);
 
+void Sound_Update();
+
+extern unsigned vblank_count;
+
 int main()
 {
     // clear sound registers
@@ -98,6 +102,8 @@ int main()
             exitflag = true;
         }
         swiWaitForVBlank();
+        Sound_Update();
+        vblank_count++;
     }
     return 0;
 }
