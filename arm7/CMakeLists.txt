@@ -13,6 +13,6 @@ set(ARM7_SRC
 
 # Link with those libraries
 link_libraries("-lc")    # C library
-link_libraries("-lnds7")
+link_libraries("-lnds7d")
 
 add_executable(arm7.elf ${ARM7_SRC})

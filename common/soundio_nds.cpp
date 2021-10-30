@@ -107,6 +107,7 @@ bool Is_Sample_Playing(void const* sample)
 void Stop_Sample_Playing(void const* sample)
 {
     CALLED;
+    fifoSendValue32(FIFO_USER_01, USR1::SOUND_KILL);
 };
 int Play_Sample(void const* sample, int priority, int volume, signed short panloc)
 {

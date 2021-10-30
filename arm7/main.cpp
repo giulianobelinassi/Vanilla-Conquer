@@ -58,6 +58,8 @@ void installUser01FIFO();
 
 extern "C" void nocashWrite(const char* str, int len);
 
+void Sound_Update();
+
 int main()
 {
     // clear sound registers
@@ -92,8 +94,8 @@ int main()
 
     setPowerButtonCB(powerButtonCB);
 
-    // Keep the ARM7 mostly idle
     while (!exitflag) {
+        Sound_Update();
         if (0 == (REG_KEYINPUT & (KEY_SELECT | KEY_START | KEY_L | KEY_R))) {
             exitflag = true;
         }
