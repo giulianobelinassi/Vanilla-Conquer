@@ -34,11 +34,13 @@
 #include "../common/audio.h"
 #include "../common/audio_fifocommon.h"
 
+#include "printf.h"
+
+#define ARM7
+
 // Not good practice, but who cares.
 #include "../common/soscodec.cpp"
 #include "../common/auduncmp.cpp"
-
-#include "printf.h"
 
 #define IS_CHANNEL_FREE(i) (!(SCHANNEL_CR(i) & SCHANNEL_ENABLE))
 
@@ -133,7 +135,10 @@ public:
     inline bool Is_Sample_Playing()
     {
         int channel = Get_Channel_Index(this);
-        return Active /*|| !IS_CHANNEL_FREE(channel)*/;
+        // If sample is hwuncompressed then it is queued directly to the
+        // hardware and there is no need to touch the active variable
+        // because we can directly querry the hardware.
+        return Active || !IS_CHANNEL_FREE(channel);
     }
 
     inline void Stop_Sample()
@@ -165,8 +170,12 @@ public:
 
     int Play(bool hwuncompress);
 
-    int
-    Play_Sample(const void* sample, unsigned char priority, unsigned char volume, unsigned char panloc, unsigned handle)
+    int Play_Sample(const void* sample,
+                    unsigned char priority,
+                    unsigned char volume,
+                    unsigned char panloc,
+                    unsigned handle,
+                    bool hwuncompress)
     {
         // Set attributes given by call.
         Priority = priority;
@@ -193,13 +202,11 @@ public:
         Compression = SCompressType(raw_header.Compression);
         Remainder = raw_header.Size;
         Sample = Add_Long_To_Pointer(sample, sizeof(AUDHeaderType));
-        if (false /*Can_Be_Hardware_Decompressed(Compression, Bits)*/) {
+        if (hwuncompress && Can_Be_Hardware_Decompressed(Compression, Bits)) {
             // Yay! just throw this sample to the hardware.
-
             // Size of sample is the same size reported by the header.
-            SampleSize = raw_header.Size;
-            Sample = Add_Long_To_Pointer(sample, sizeof(AUDHeaderType));
 
+            SampleSize = raw_header.Size;
             return Play(true);
         }
 
@@ -234,14 +241,14 @@ public:
             } else {
                 MoreSource = false;
                 OneShot = true;
+                Remainder = 0;
+                QueueBuffer = 0;
                 break;
             }
         }
 
         Decomp_Buffer_Index = 0;
-        Play(false);
-
-        return 0;
+        return Play(false);
     }
 
     inline void Update()
@@ -377,14 +384,15 @@ public:
         return min_handle;
     }
 
-    int Play_Sample(void const* sample, int priority, int volume, signed short panloc, unsigned handle)
+    int
+    Play_Sample(void const* sample, int priority, int volume, signed short panloc, unsigned handle, bool hwuncompress)
     {
         int free_tracker = Get_Free_Sound_Tracker(priority);
         SoundTracker* st = Get_Sample_Tracker(free_tracker);
 
         // Stop sound if currently playing
         st->Stop_Sample();
-        return st->Play_Sample(sample, priority, volume, panloc, handle);
+        return st->Play_Sample(sample, priority, volume, panloc, handle, hwuncompress);
     }
 
     void Print_Priorities()
@@ -441,6 +449,8 @@ int SoundTracker::Play(bool hwuncompress)
         format = DS_Sound_Format(Compression, Bits);
         freq = Frequency;
         size = SampleSize;
+        Active = false; // No need to set this flag to true, as we querry
+        // directly to the hardware.
     } else {
         // Decomp_Buffer_Index should have been updated by Update and it should
         // point to the correct buffer.
@@ -448,15 +458,22 @@ int SoundTracker::Play(bool hwuncompress)
         format = DS_Sound_Format(SCOMP_NONE, Bits);
         size = Decomp_Buff_Size[Decomp_Buffer_Index];
         freq = Frequency;
+        if (size == 0) {
+            SCHANNEL_CR(channel) &= ~SCHANNEL_ENABLE;
+            Active = false;
+        } else {
+            Active = true;
+        }
     }
 
-    Active = (size > 0);
-
-    SCHANNEL_SOURCE(channel) = (u32)sample;
-    SCHANNEL_REPEAT_POINT(channel) = 0;
-    SCHANNEL_LENGTH(channel) = size >> 2;
-    SCHANNEL_TIMER(channel) = SOUND_FREQ(freq);
-    SCHANNEL_CR(channel) = SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(panloc) | (format << 29) | (SOUND_ONE_SHOT);
+    if (size > 0) {
+        SCHANNEL_SOURCE(channel) = (u32)sample;
+        SCHANNEL_REPEAT_POINT(channel) = 0;
+        SCHANNEL_LENGTH(channel) = size >> 2;
+        SCHANNEL_TIMER(channel) = SOUND_FREQ(freq);
+        SCHANNEL_CR(channel) =
+            SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(panloc) | (format << 29) | (SOUND_ONE_SHOT);
+    }
 
     return SoundHandle;
 }
@@ -654,7 +671,6 @@ void user01DataHandler(int bytes, void* user_data)
     int channel = -1;
 
     USR1::FifoMessage msg;
-
     fifoGetDatamsg(FIFO_USER_01, bytes, (u8*)&msg);
 
     if (msg.type == USR1::SOUND_PLAY_MESSAGE) {
@@ -663,11 +679,10 @@ void user01DataHandler(int bytes, void* user_data)
         u8 priority = msg.SoundPlay.priority;
         u8 volume = msg.SoundPlay.volume;
         u8 panloc = msg.SoundPlay.pan;
+        u8 hwuncompress = msg.SoundPlay.hwuncompress;
 
-        channel = Trackers.Play_Sample(sample, priority, volume, panloc, handle);
+        channel = Trackers.Play_Sample(sample, priority, volume, panloc, handle, hwuncompress);
     }
-
-    //Trackers.Print_Priorities();
 
     // Don't send confirmation -- This engine is asynchronous.
     //fifoSendValue32(FIFO_USER_01, (u32)channel);

@@ -109,7 +109,7 @@ void Stop_Sample_Playing(void const* sample)
     CALLED;
     fifoSendValue32(FIFO_USER_01, USR1::SOUND_KILL);
 };
-int Play_Sample(void const* sample, int priority, int volume, signed short panloc)
+int Play_Sample(void const* sample, int priority, int volume, signed short panloc, bool hwuncompress)
 {
     static int current_handle = 0;
     int handle = current_handle++;
@@ -121,9 +121,10 @@ int Play_Sample(void const* sample, int priority, int volume, signed short panlo
     msg.SoundPlay.data = sample;
     msg.SoundPlay.volume = volume / 2;
     msg.SoundPlay.pan = ((int)panloc + 32767) / 517;
+    msg.SoundPlay.hwuncompress = (char)(hwuncompress) ? 1 : 0;
 
     // Asynchronous send sound play command
-    fifoSendDatamsg(FIFO_USER_01, sizeof(msg), (unsigned char*)&msg);
+    fifoSendDatamsg(FIFO_USER_01, sizeof(msg), (u8*)&msg);
 
     return handle;
 }

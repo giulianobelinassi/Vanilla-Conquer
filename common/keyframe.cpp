@@ -195,8 +195,9 @@ void Check_Use_Compressed_Shapes()
     UseBigShapeBuffer = false;
     OriginalUseBigShapeBuffer = false;
 #else
-    UseBigShapeBuffer = true;
-    OriginalUseBigShapeBuffer = true;
+    // BigShapeBuffer is broken in this branch
+    UseBigShapeBuffer = false;
+    OriginalUseBigShapeBuffer = false;
 #endif
 }
 
