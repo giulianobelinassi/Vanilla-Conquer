@@ -284,12 +284,12 @@ void Shorten_Attached_Anims(ObjectClass* obj);
 /*
 **	AUDIO.CPP
 */
-int Sound_Effect(VocType voc, VolType volume, int variation = 1, signed short panvalue = 0);
+int Sound_Effect(VocType voc, VolType volume, int variation = 1, signed short panvalue = 0, bool hwuncompress = false);
 // void Speak(VoxType voice); // MBL 02.06.2020
 void Speak(VoxType voice, HouseClass* house = NULL, COORDINATE coord = 0);
 void Speak_AI(void);
 void Stop_Speaking(void);
-void Sound_Effect(VocType voc, COORDINATE coord = NULL, int variation = 1);
+void Sound_Effect(VocType voc, COORDINATE coord = NULL, int variation = 1, bool hwuncompress = false);
 bool Is_Speaking(void);
 
 /*

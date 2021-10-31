@@ -997,7 +997,7 @@ void Stop_Sample_Playing(const void* sample)
     }
 };
 
-int Play_Sample(const void* sample, int priority, int volume, signed short panloc)
+int Play_Sample(const void* sample, int priority, int volume, signed short panloc, bool hwuncompress)
 {
     return Play_Sample_Handle(sample, priority, volume, panloc, Get_Free_Sample_Handle(priority));
 };

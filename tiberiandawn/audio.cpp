@@ -236,7 +236,7 @@ extern void On_Ping(const HouseClass* player_ptr, COORDINATE coord);
  *   11/12/1994 JLB : Created.                                                                 *
  *   01/05/1995 JLB : Reduces sound more dramatically when off screen.                         *
  *=============================================================================================*/
-void Sound_Effect(VocType voc, COORDINATE coord, int variation)
+void Sound_Effect(VocType voc, COORDINATE coord, int variation, bool hwuncompress)
 {
 #ifdef REMASTER_BUILD
     //
@@ -254,6 +254,10 @@ void Sound_Effect(VocType voc, COORDINATE coord, int variation)
     }
     if (coord) {
         cell_pos = Coord_Cell(coord);
+    }
+
+    if (hwuncompress) {
+        printf("Hwuncompress\n");
     }
 
     distance = 0xFF;
@@ -281,7 +285,7 @@ void Sound_Effect(VocType voc, COORDINATE coord, int variation)
         }
     }
 
-    Sound_Effect(voc, (VolType)Fixed_To_Cardinal(distance, Options.Volume), variation, pan_value);
+    Sound_Effect(voc, (VolType)Fixed_To_Cardinal(distance, Options.Volume), variation, pan_value, hwuncompress);
 #endif
 }
 
@@ -304,7 +308,7 @@ void Sound_Effect(VocType voc, COORDINATE coord, int variation)
  *   11/12/1994 JLB : Handles cache logic.                                                     *
  *   05/04/1995 JLB : Variation adjustments.                                                   *
  *=============================================================================================*/
-int Sound_Effect(VocType voc, VolType volume, int variation, signed short pan_value)
+int Sound_Effect(VocType voc, VolType volume, int variation, signed short pan_value, bool hwuncompress)
 {
     char name[_MAX_FNAME + _MAX_EXT]; // Working filename of sound effect.
 
@@ -348,7 +352,7 @@ int Sound_Effect(VocType voc, VolType volume, int variation, signed short pan_va
     */
     if (ptr) {
         return (
-            Play_Sample(ptr, Fixed_To_Cardinal(SoundEffectName[voc].Priority, (int)volume), (int)volume, pan_value));
+            Play_Sample(ptr, Fixed_To_Cardinal(SoundEffectName[voc].Priority, (int)volume), (int)volume, pan_value, hwuncompress));
     }
     return (-1);
 }

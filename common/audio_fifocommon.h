@@ -49,6 +49,7 @@ namespace USR1
                 u8 volume;
                 u8 pan;
                 u8 priority;
+                u8 hwuncompress;
             } SoundPlay;
         };
 
