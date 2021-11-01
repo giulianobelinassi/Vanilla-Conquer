@@ -198,7 +198,6 @@ long CCFileClass::Read(void* buffer, long size)
             Close();
         return (size);
     }
-
     long s = CDFileClass::Read(buffer, size);
 
     /*

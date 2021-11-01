@@ -59,7 +59,7 @@ if(NOT MSVC)
         # objects.
         set(CMAKE_CXX_FLAGS_DEBUG "-O2")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG "-g3")
+        set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O2 -fsanitize=undefined")
     endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcheck-new -fsigned-char -fdata-sections -ffunction-sections -DNOMINMAX")
