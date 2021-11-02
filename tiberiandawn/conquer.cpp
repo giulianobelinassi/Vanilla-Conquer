@@ -3894,8 +3894,8 @@ bool Is_Demo(void)
     if (!bAlreadyChecked) {
         CCFileClass file("DEMO.MIX");
         bDemo = file.Is_Available();
-        bAlreadyChecked = true;
     }
+    bAlreadyChecked = true;
 
     return bDemo;
 }
