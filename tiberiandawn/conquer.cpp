@@ -2826,7 +2826,7 @@ long VQ_Call_Back(unsigned char*, long)
     Interpolate_2X_Scale(&SysMemPage, &SeenBuff, NULL, Settings.Video.InterpolationMode);
     Frame_Limiter();
 
-    if ((BreakoutAllowed || Debug_Flag) && key == KN_ESC) {
+    if ((BreakoutAllowed || Debug_Flag) && (key == KN_ESC || key == VK_LBUTTON)) {
         WWKeyboard->Clear();
         Brokeout = true;
         return (true);
