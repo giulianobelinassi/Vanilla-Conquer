@@ -31,7 +31,8 @@ namespace USR1
         SDMMC_SD_READ_SECTORS,
         SDMMC_SD_WRITE_SECTORS,
         SDMMC_NAND_READ_SECTORS,
-        SDMMC_NAND_WRITE_SECTORS
+        SDMMC_NAND_WRITE_SECTORS,
+        SOUND_VQA_MESSAGE,
     } FifoSoundMessageType;
 
     typedef struct FifoMessage
@@ -40,7 +41,6 @@ namespace USR1
 
         union
         {
-
             struct
             {
                 const void* data;
@@ -51,6 +51,15 @@ namespace USR1
                 u8 priority;
                 u8 hwuncompress;
             } SoundPlay;
+
+            struct
+            {
+                const void* data;
+                u16 freq;
+                u16 size;
+                u8 volume;
+                u8 bits;
+            } SoundVQAChunk;
         };
 
     } ALIGN(4) FifoSoundMessage;

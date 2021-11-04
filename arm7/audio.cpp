@@ -43,6 +43,7 @@
 #include "../common/auduncmp.cpp"
 
 #define IS_CHANNEL_FREE(i) (!(SCHANNEL_CR(i) & SCHANNEL_ENABLE))
+#define VQA_CHANNEL        7
 
 typedef enum
 {
@@ -646,7 +647,7 @@ void user01CommandHandler(u32 command, void* userdata)
 
     case USR1::SOUND_KILL:
         Trackers.Stop_Trackers();
-        //SCHANNEL_CR(channel) &= ~SCHANNEL_ENABLE;
+        SCHANNEL_CR(VQA_CHANNEL) &= ~SCHANNEL_ENABLE;
         break;
 
     case USR1::SOUND_PAUSE:
@@ -682,6 +683,23 @@ void user01DataHandler(int bytes, void* user_data)
         u8 hwuncompress = msg.SoundPlay.hwuncompress;
 
         channel = Trackers.Play_Sample(sample, priority, volume, panloc, handle, hwuncompress);
+    } else if (msg.type == USR1::SOUND_VQA_MESSAGE) {
+        const void* sample = msg.SoundVQAChunk.data;
+        u16 freq = msg.SoundVQAChunk.freq;
+        u16 size = msg.SoundVQAChunk.size;
+        u8 volume = msg.SoundVQAChunk.volume;
+        u8 bits = msg.SoundVQAChunk.bits;
+
+        unsigned format = format = SoundTracker::DS_Sound_Format(SCOMP_NONE, bits);
+
+        SCHANNEL_SOURCE(VQA_CHANNEL) = (u32)sample;
+        SCHANNEL_REPEAT_POINT(VQA_CHANNEL) = 0;
+        SCHANNEL_LENGTH(VQA_CHANNEL) = size >> 2;
+        SCHANNEL_TIMER(VQA_CHANNEL) = SOUND_FREQ(freq);
+        SCHANNEL_CR(VQA_CHANNEL) =
+            SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(127) | (format << 29) | (SOUND_REPEAT);
+
+        SCHANNEL_REPEAT_POINT(7) = 0;
     }
 
     // Don't send confirmation -- This engine is asynchronous.
