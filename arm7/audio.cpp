@@ -60,9 +60,9 @@ enum
     VOLUME_MAX = 255,
     PRIORITY_MIN = 0,
     PRIORITY_MAX = 255,
-    MAX_SAMPLE_TRACKERS = 4, // C&C issue where sounds get cut off is because of the small number of trackers.
+    MAX_SAMPLE_TRACKERS = 5, // C&C issue where sounds get cut off is because of the small number of trackers.
     STREAM_BUFFER_COUNT = 16,
-    BUFFER_CHUNK_SIZE = 8192, // 256 * 32,
+    BUFFER_CHUNK_SIZE = 4096, // 256 * 32,
     UNCOMP_BUFFER_SIZE = 2098,
     BUFFER_TOTAL_BYTES = BUFFER_CHUNK_SIZE * 4, // 32 kb
     TIMER_DELAY = 25,
@@ -101,6 +101,8 @@ public:
         SoundHandle = -1;
     }
 
+    inline int Get_Channel_Index();
+
     static inline bool Can_Be_Hardware_Decompressed(SCompressType c, unsigned char bits)
     {
         switch (c) {
@@ -135,7 +137,7 @@ public:
 
     inline bool Is_Sample_Playing()
     {
-        int channel = Get_Channel_Index(this);
+        int channel = Get_Channel_Index();
         // If sample is hwuncompressed then it is queued directly to the
         // hardware and there is no need to touch the active variable
         // because we can directly querry the hardware.
@@ -144,7 +146,7 @@ public:
 
     inline void Stop_Sample()
     {
-        int channel = Get_Channel_Index(this);
+        int channel = Get_Channel_Index();
         SCHANNEL_CR(channel) &= ~SCHANNEL_ENABLE;
         Active = false;
         MoreSource = false;
@@ -156,7 +158,9 @@ public:
         Decomp_Buff_Size[0] = 0;
         Decomp_Buff_Size[1] = 0;
         Sample = NULL;
+        OriginalSample = NULL;
         SampleSize = 0;
+        IsMusic = false;
     }
 
     inline unsigned char Get_Priority()
@@ -176,13 +180,15 @@ public:
                     unsigned char volume,
                     unsigned char panloc,
                     unsigned handle,
-                    bool hwuncompress)
+                    bool hwuncompress,
+                    bool is_music)
     {
         // Set attributes given by call.
         Priority = priority;
         Volume = volume;
         Panloc = panloc;
         SoundHandle = handle;
+        IsMusic = is_music;
 
         // Load the AUD header;
         AUDHeaderType raw_header;
@@ -201,8 +207,17 @@ public:
 
         // Check the Compression.
         Compression = SCompressType(raw_header.Compression);
-        Remainder = raw_header.Size;
+        OriginalSample = (void*)sample;
         Sample = Add_Long_To_Pointer(sample, sizeof(AUDHeaderType));
+
+        if (IsMusic) {
+            QueueBuffer = Add_Long_To_Pointer(sample, MUSIC_CHUNK_SIZE);
+            QueueSize = MUSIC_CHUNK_SIZE;
+            Remainder = MUSIC_CHUNK_SIZE - sizeof(AUDHeaderType);
+        } else {
+            Remainder = raw_header.Size;
+        }
+
         if (hwuncompress && Can_Be_Hardware_Decompressed(Compression, Bits)) {
             // Yay! just throw this sample to the hardware.
             // Size of sample is the same size reported by the header.
@@ -254,7 +269,7 @@ public:
 
     inline void Update()
     {
-        int current_channel = Get_Channel_Index(this);
+        int current_channel = Get_Channel_Index();
 
         if (!IS_CHANNEL_FREE(current_channel))
             return;
@@ -293,12 +308,30 @@ public:
                                          nullptr,
                                          nullptr);
             Decomp_Buff_Size[to_update] = bytes_read;
+
+            if (IsMusic && !QueueBuffer) {
+                // Send request for more data to the ARM9 chip.
+                fifoSendValue32(FIFO_USER_02, USR2::MUSIC_REQUEST_CHUNK);
+                QueueBuffer = (char*)OriginalSample + MusicStreamIndex * MUSIC_CHUNK_SIZE;
+                MusicStreamIndex = (MusicStreamIndex + 1) % 2;
+                QueueSize = MUSIC_CHUNK_SIZE;
+                //while(!fifoCheckValue32(FIFO_USER_01));
+            }
+
             if (bytes_read == 0) {
                 // The entire sample have been decompressed, no more precessing is
                 // neessary.
                 MoreSource = false;
             }
         }
+    }
+
+    void Print_IsMusic()
+    {
+        if (IsMusic)
+            nocashPrintf("1 ");
+        else
+            nocashPrintf("0 ");
     }
 
 private:
@@ -312,7 +345,8 @@ private:
     int Frequency;             // Frequency of the sample.
     unsigned SoundHandle;      // The Nintendo DS sound handle.
     void* Sample;              // Playable sample. May be compressed or not.
-    int SampleSize;            // Size of the Sample.
+    void* OriginalSample;
+    int SampleSize; // Size of the Sample.
 
     int Remainder;     // Number of bytes remaining in the source data
                        // as pointed by the "Source" element.
@@ -325,6 +359,9 @@ private:
     char Decomp_Buffer_Index;
 
     bool Active;
+    bool IsMusic;
+
+    char MusicStreamIndex;
 
 public:
     _SOS_COMPRESS_INFO sosinfo;
@@ -385,15 +422,20 @@ public:
         return min_handle;
     }
 
-    int
-    Play_Sample(void const* sample, int priority, int volume, signed short panloc, unsigned handle, bool hwuncompress)
+    int Play_Sample(void const* sample,
+                    int priority,
+                    int volume,
+                    signed short panloc,
+                    unsigned handle,
+                    bool hwuncompress,
+                    bool is_music)
     {
         int free_tracker = Get_Free_Sound_Tracker(priority);
         SoundTracker* st = Get_Sample_Tracker(free_tracker);
 
         // Stop sound if currently playing
         st->Stop_Sample();
-        return st->Play_Sample(sample, priority, volume, panloc, handle, hwuncompress);
+        return st->Play_Sample(sample, priority, volume, panloc, handle, hwuncompress, is_music);
     }
 
     void Print_Priorities()
@@ -428,9 +470,9 @@ private:
 
 static SoundTrackers Trackers;
 
-int Get_Channel_Index(SoundTracker* st)
+int SoundTracker::Get_Channel_Index()
 {
-    return ((unsigned long)st - (unsigned long)Trackers.Get_Sample_Tracker(0)) / sizeof(SoundTracker);
+    return ((unsigned long)this - (unsigned long)Trackers.Get_Sample_Tracker(0)) / sizeof(SoundTracker);
 }
 
 int SoundTracker::Play(bool hwuncompress)
@@ -443,7 +485,7 @@ int SoundTracker::Play(bool hwuncompress)
     unsigned short freq = Frequency;
     unsigned char volume = Volume;
     unsigned char panloc = Panloc;
-    int channel = Get_Channel_Index(this);
+    int channel = Get_Channel_Index();
 
     if (hwuncompress) {
         sample = Sample;
@@ -607,6 +649,44 @@ void Sound_Update()
 // End software decompression code.
 //-----------------------------------------------------------------------------
 
+template <int MESSAGES_MAX> class MessageQueue
+{
+public:
+    int Pop_Message(USR1::FifoMessage* msg)
+    {
+        if (Distance == 0) {
+            return 0;
+        }
+
+        memcpy(msg, &Messages[Tail], sizeof(*msg));
+        Tail = (Tail + 1) % MESSAGES_MAX;
+        Distance--;
+
+        return 1;
+    }
+
+    int Push_Message(USR1::FifoMessage* msg)
+    {
+        while (Distance >= MESSAGES_MAX) {
+            Tail = (Tail + 1) % MESSAGES_MAX;
+            Distance--;
+        }
+
+        memcpy(&Messages[Head], msg, sizeof(*msg));
+        Head = (Head + 1) % MESSAGES_MAX;
+        Distance++;
+
+        return 1;
+    }
+
+private:
+    USR1::FifoMessage Messages[MESSAGES_MAX];
+    int Head, Tail;
+    int Distance;
+};
+
+static MessageQueue<16> MQueue;
+
 //---------------------------------------------------------------------------------
 void user01CommandHandler(u32 command, void* userdata)
 {
@@ -661,18 +741,19 @@ void user01CommandHandler(u32 command, void* userdata)
     case USR1::MIC_STOP:
         micStopRecording();
         break;
+    case USR1::MUSIC_CHUNK_UPDATED:
+        break;
 
     default:
         break;
     }
 }
 
-void user01DataHandler(int bytes, void* user_data)
+void Process_Queue()
 {
-    int channel = -1;
-
     USR1::FifoMessage msg;
-    fifoGetDatamsg(FIFO_USER_01, bytes, (u8*)&msg);
+    if (MQueue.Pop_Message(&msg) == 0)
+        return;
 
     if (msg.type == USR1::SOUND_PLAY_MESSAGE) {
         const void* sample = msg.SoundPlay.data;
@@ -681,12 +762,13 @@ void user01DataHandler(int bytes, void* user_data)
         u8 volume = msg.SoundPlay.volume;
         u8 panloc = msg.SoundPlay.pan;
         u8 hwuncompress = msg.SoundPlay.hwuncompress;
+        bool is_music = msg.SoundPlay.is_music;
 
-        channel = Trackers.Play_Sample(sample, priority, volume, panloc, handle, hwuncompress);
+        Trackers.Play_Sample(sample, priority, volume, panloc, handle, hwuncompress, is_music);
     } else if (msg.type == USR1::SOUND_VQA_MESSAGE) {
         const void* sample = msg.SoundVQAChunk.data;
         u16 freq = msg.SoundVQAChunk.freq;
-        u16 size = msg.SoundVQAChunk.size;
+        u32 size = msg.SoundVQAChunk.size;
         u8 volume = msg.SoundVQAChunk.volume;
         u8 bits = msg.SoundVQAChunk.bits;
 
@@ -701,6 +783,13 @@ void user01DataHandler(int bytes, void* user_data)
 
         SCHANNEL_REPEAT_POINT(7) = 0;
     }
+}
+
+void user01DataHandler(int bytes, void* user_data)
+{
+    USR1::FifoMessage msg;
+    fifoGetDatamsg(FIFO_USER_01, bytes, (u8*)&msg);
+    MQueue.Push_Message(&msg);
 
     // Don't send confirmation -- This engine is asynchronous.
     //fifoSendValue32(FIFO_USER_01, (u32)channel);
