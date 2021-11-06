@@ -189,7 +189,7 @@ int VQA_StartAudio(VQAHandle* handle)
     msg.type = USR1::SOUND_VQA_MESSAGE;
     msg.SoundVQAChunk.data = audio->Buffer;
     msg.SoundVQAChunk.freq = audio->SampleRate;
-    msg.SoundVQAChunk.size = 65535;
+    msg.SoundVQAChunk.size = 65536;
     msg.SoundVQAChunk.volume = config->Volume;
     msg.SoundVQAChunk.bits = audio->BitsPerSample;
 

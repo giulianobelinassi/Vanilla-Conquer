@@ -60,6 +60,8 @@ extern "C" void nocashWrite(const char* str, int len);
 
 void Sound_Update();
 
+void Process_Queue();
+
 int main()
 {
     // clear sound registers
@@ -95,11 +97,12 @@ int main()
     setPowerButtonCB(powerButtonCB);
 
     while (!exitflag) {
+        Process_Queue();
         Sound_Update();
         if (0 == (REG_KEYINPUT & (KEY_SELECT | KEY_START | KEY_L | KEY_R))) {
             exitflag = true;
         }
-        swiWaitForVBlank();
+        //swiWaitForVBlank();
     }
     return 0;
 }
