@@ -98,7 +98,7 @@ public:
     SoundTracker()
     {
         memset(this, 0, sizeof(*this));
-        SoundHandle = -1;
+        SoundHandle = 0;
     }
 
     inline int Get_Channel_Index();
@@ -161,6 +161,7 @@ public:
         OriginalSample = NULL;
         SampleSize = 0;
         IsMusic = false;
+        MusicStreamIndex = 0;
     }
 
     inline unsigned char Get_Priority()
@@ -179,7 +180,7 @@ public:
                     unsigned char priority,
                     unsigned char volume,
                     unsigned char panloc,
-                    unsigned handle,
+                    u16 handle,
                     bool hwuncompress,
                     bool is_music)
     {
@@ -267,6 +268,11 @@ public:
         return Play(false);
     }
 
+    inline u16 Get_Sample_16()
+    {
+        return (u16)((u32)OriginalSample & 0xFFFF);
+    }
+
     inline void Update()
     {
         int current_channel = Get_Channel_Index();
@@ -296,7 +302,7 @@ public:
         Play(false);
 
         if (MoreSource) {
-            // Update stopped buffer with new data.
+            // Update stopped buffer with new data
             int bytes_read = Sample_Copy(this,
                                          &Sample,
                                          &Remainder,
@@ -310,7 +316,6 @@ public:
             Decomp_Buff_Size[to_update] = bytes_read;
 
             if (IsMusic && !QueueBuffer) {
-                // Send request for more data to the ARM9 chip.
                 fifoSendValue32(FIFO_USER_02, USR2::MUSIC_REQUEST_CHUNK);
                 QueueBuffer = (char*)OriginalSample + MusicStreamIndex * MUSIC_CHUNK_SIZE;
                 MusicStreamIndex = (MusicStreamIndex + 1) % 2;
@@ -343,7 +348,7 @@ private:
     unsigned char Volume;      // Volume of current sound.
     SCompressType Compression; // Compression that this sound data is using.
     int Frequency;             // Frequency of the sample.
-    unsigned SoundHandle;      // The Nintendo DS sound handle.
+    u16 SoundHandle;           // The Nintendo DS sound handle.
     void* Sample;              // Playable sample. May be compressed or not.
     void* OriginalSample;
     int SampleSize; // Size of the Sample.
@@ -402,6 +407,30 @@ public:
         return false;
     }
 
+    inline void Stop_Sample_Handle(u16 handle)
+    {
+        SoundTracker* st;
+
+        for (int i = 0; i < MAX_SAMPLE_TRACKERS; i++) {
+            st = Get_Sample_Tracker(i);
+
+            if (st->Get_Handle() == handle && st->Is_Sample_Playing())
+                st->Stop_Sample();
+        }
+    }
+
+    inline void Stop_Sample(u16 sample)
+    {
+        SoundTracker* st;
+
+        for (int i = 0; i < MAX_SAMPLE_TRACKERS; i++) {
+            st = Get_Sample_Tracker(i);
+
+            if (st->Get_Sample_16() == sample && st->Is_Sample_Playing())
+                st->Stop_Sample();
+        }
+    }
+
     inline int Get_Free_Sound_Tracker(int priority)
     {
         int i;
@@ -426,7 +455,7 @@ public:
                     int priority,
                     int volume,
                     signed short panloc,
-                    unsigned handle,
+                    u16 handle,
                     bool hwuncompress,
                     bool is_music)
     {
@@ -744,6 +773,12 @@ void user01CommandHandler(u32 command, void* userdata)
     case USR1::MUSIC_CHUNK_UPDATED:
         break;
 
+    case USR1::STOP_SAMPLE_HANDLE:
+        Trackers.Stop_Sample_Handle(data);
+
+    case USR1::STOP_SAMPLE:
+        Trackers.Stop_Sample(data);
+
     default:
         break;
     }
@@ -757,7 +792,7 @@ void Process_Queue()
 
     if (msg.type == USR1::SOUND_PLAY_MESSAGE) {
         const void* sample = msg.SoundPlay.data;
-        u32 handle = msg.SoundPlay.handle;
+        u16 handle = msg.SoundPlay.handle;
         u8 priority = msg.SoundPlay.priority;
         u8 volume = msg.SoundPlay.volume;
         u8 panloc = msg.SoundPlay.pan;
@@ -779,7 +814,7 @@ void Process_Queue()
         SCHANNEL_LENGTH(VQA_CHANNEL) = size >> 2;
         SCHANNEL_TIMER(VQA_CHANNEL) = SOUND_FREQ(freq);
         SCHANNEL_CR(VQA_CHANNEL) =
-            SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(127) | (format << 29) | (SOUND_REPEAT);
+            SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(64) | (format << 29) | (SOUND_REPEAT);
 
         SCHANNEL_REPEAT_POINT(7) = 0;
     }

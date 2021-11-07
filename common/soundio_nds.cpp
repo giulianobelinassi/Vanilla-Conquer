@@ -43,6 +43,12 @@ typedef enum
     SCOMP_SOS = 99      // SOS frame compression.
 } SCompressType;
 
+inline u16 Get_Next_Handle()
+{
+    static u16 handle = 0;
+    return ++handle;
+}
+
 // Everything down there is present to conform to the game's API.
 
 void (*Audio_Focus_Loss_Function)(void) = nullptr;
@@ -59,10 +65,18 @@ public:
     MusicBuffer()
     {
         memset(this, 0, sizeof(*this));
-        Handle = 0xdeadbeef;
+        Handle = -1;
+        Volume = 200;
     }
 
-    bool Is_Music_Handle(int handle)
+    inline int Set_Volume(int volume)
+    {
+        int oldvol = Volume;
+        Volume = (u8)volume;
+        return oldvol;
+    }
+
+    inline bool Is_Music_Handle(u16 handle)
     {
         if (handle == Handle)
             return true;
@@ -70,42 +84,39 @@ public:
         return false;
     }
 
-    bool Sample_Status()
+    inline bool Sample_Status()
     {
         return IsPlaying;
     }
 
-    int Set_File_Stream(const char* filename, unsigned char volume)
+    inline int Set_File_Stream(const char* filename, unsigned char volume)
     {
         int bytes;
 
-        FileHandle = Open_File(filename, 1);
+        // If volume is too low then disable music to save resources
+        if (Volume < 2) {
+            printf("!! Volume too low!\n");
+            return INVALID_AUDIO_HANDLE;
+        }
 
+        FileHandle = Open_File(filename, 1);
         if (FileHandle == INVALID_FILE_HANDLE) {
             return INVALID_AUDIO_HANDLE;
         }
 
         if (Buffer == NULL) {
-            Buffer = (char*)malloc(2 * MUSIC_CHUNK_SIZE);
+            Buffer = (char*)calloc(2, MUSIC_CHUNK_SIZE);
         } else {
             memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
         }
 
         if (Buffer == NULL) {
-            printf("Memory allocation failure\n");
+            printf("Failure allocating music buffer\n");
             while (1)
                 ;
         }
 
-        bytes = Read_File(FileHandle, &Buffer[0], MUSIC_CHUNK_SIZE);
-        if (bytes == 0) {
-            IsPlaying = false;
-            free(Buffer);
-            Buffer = NULL;
-            return INVALID_AUDIO_HANDLE;
-        }
-
-        bytes = Read_File(FileHandle, &Buffer[MUSIC_CHUNK_SIZE], MUSIC_CHUNK_SIZE);
+        bytes = Read_File(FileHandle, Buffer, 2 * MUSIC_CHUNK_SIZE);
         if (bytes == 0) {
             IsPlaying = false;
             free(Buffer);
@@ -115,18 +126,14 @@ public:
 
         ToUpdate = 0;
         IsPlaying = true;
+        Handle = Get_Next_Handle();
         Send_Chunk();
         return Handle;
     }
 
-    int Stop_File_Stream()
+    inline int Stop_File_Stream()
     {
         Close_File(FileHandle);
-        //fifoSendValue32(FIFO_USER_01, USR1::SOUND_KILL);
-
-        // // Await for ARM7 to answer for releasing resources...
-        // while(!fifoCheckValue32(FIFO_USER_02))
-        //     ;
 
         free(Buffer);
         Buffer = NULL;
@@ -137,29 +144,24 @@ public:
         return 0;
     }
 
-    void Mark_For_Update()
+    inline void Mark_For_Update()
     {
         ShouldBeUpdated++;
     }
 
-    void Update_File_Stream()
+    inline void Update_File_Stream()
     {
         if (ShouldBeUpdated == 0)
             return;
 
         ShouldBeUpdated--;
 
-        printf("Update_File_Stream called\n");
-
         if (!Buffer)
             return;
 
-        int bytes = Read_File(FileHandle, &Buffer[ToUpdate * MUSIC_CHUNK_SIZE], MUSIC_CHUNK_SIZE);
-        DC_FlushRange(&Buffer[ToUpdate * MUSIC_CHUNK_SIZE], MUSIC_CHUNK_SIZE);
-        //memset(&Buffer[ToUpdate * MUSIC_CHUNK_SIZE + bytes], 0, MUSIC_CHUNK_SIZE - bytes);
+        unsigned char* to_update = (unsigned char*)Buffer + ToUpdate * MUSIC_CHUNK_SIZE;
 
-        printf("Read more %d bytes\n", bytes);
-
+        int bytes = Read_File(FileHandle, to_update, MUSIC_CHUNK_SIZE);
         if (bytes == 0) {
             IsPlaying = false;
             Close_File(FileHandle);
@@ -167,10 +169,9 @@ public:
         }
 
         ToUpdate = (ToUpdate + 1) % 2;
-        fifoSendValue32(FIFO_USER_01, USR1::MUSIC_CHUNK_UPDATED);
     }
 
-    void Send_Chunk()
+    inline void Send_Chunk()
     {
         if (!Buffer)
             return;
@@ -179,9 +180,9 @@ public:
 
         msg.type = USR1::SOUND_PLAY_MESSAGE;
         msg.SoundPlay.priority = 255;
-        msg.SoundPlay.handle = 0;
+        msg.SoundPlay.handle = Handle;
         msg.SoundPlay.data = Buffer;
-        msg.SoundPlay.volume = 255;
+        msg.SoundPlay.volume = Volume;
         msg.SoundPlay.pan = 64;
         msg.SoundPlay.hwuncompress = 0;
         msg.SoundPlay.is_music = true;
@@ -196,7 +197,8 @@ private:
     bool IsPlaying;
     int ToUpdate;
     int ShouldBeUpdated;
-    int Handle;
+    u16 Handle;
+    unsigned char Volume;
 };
 
 static MusicBuffer MBuffer;
@@ -279,11 +281,15 @@ void Sound_End(void)
 }
 void Stop_Sample(int handle)
 {
-    printf("Stop Sample: %d\n", handle);
+    if (MBuffer.Is_Music_Handle(handle)) {
+        MBuffer.Stop_File_Stream();
+    }
+
+    unsigned command = USR1::STOP_SAMPLE_HANDLE | ((u32)handle & 0xFFFF);
+    fifoSendValue32(FIFO_USER_01, command);
 }
 bool Sample_Status(int handle)
 {
-    //CALLED;
     if (MBuffer.Is_Music_Handle(handle))
         return MBuffer.Sample_Status();
 
@@ -291,18 +297,18 @@ bool Sample_Status(int handle)
 };
 bool Is_Sample_Playing(void const* sample)
 {
+    /* Don't implement that.  It is called constantly and may flood the ARM7
+       with messages more than we already is.  */
     return false;
 };
 void Stop_Sample_Playing(void const* sample)
 {
-    CALLED;
-    fifoSendValue32(FIFO_USER_01, USR1::SOUND_KILL);
-    MBuffer.Stop_File_Stream();
+    unsigned command = USR1::STOP_SAMPLE | ((u32)sample & 0xFFFF);
+    fifoSendValue32(FIFO_USER_01, command);
 };
 int Play_Sample(void const* sample, int priority, int volume, signed short panloc, bool hwuncompress)
 {
-    static int current_handle = 0;
-    int handle = current_handle++;
+    u16 handle = Get_Next_Handle();
     USR1::FifoMessage msg;
 
     msg.type = USR1::SOUND_PLAY_MESSAGE;
@@ -339,7 +345,7 @@ int Set_Score_Vol(int volume)
 void Fade_Sample(int handle, int ticks)
 {
     CALLED;
-    Stop_Sample_Playing((void*)handle);
+    Stop_Sample(handle);
 }
 
 int Get_Free_Sample_Handle(int priority)
