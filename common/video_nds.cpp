@@ -68,15 +68,17 @@ class HardwareCursor
 public:
     void Init()
     {
-        vramSetBankF(VRAM_F_MAIN_SPRITE_0x06400000);
-        oamInit(&oamMain, SpriteMapping_1D_256, false);
 
-        Surface = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
+        // Allocate 128Kb for the mouse sprites.
+        vramSetBankD(VRAM_D_SUB_SPRITE);
+        oamInit(&oamSub, SpriteMapping_1D_256, false);
+
+        Surface = oamAllocateGfx(&oamSub, SpriteSize_32x32, SpriteColorFormat_256Color);
 
         X = 160;
         Y = 100;
 
-        oamSet(&oamMain,
+        oamSet(&oamSub,
                0,
                X,
                Y,
@@ -95,7 +97,7 @@ public:
 
     inline void Set_Cursor_Palette(const u16* palette)
     {
-        dmaCopy(palette, SPRITE_PALETTE, 256);
+        dmaCopy(palette, SPRITE_PALETTE_SUB, 2 * 256);
     }
 
     inline void Set_Video_Cursor(void* cursor, int w, int h, int hotx, int hoty)
@@ -109,6 +111,8 @@ public:
         uint8_t* src = (uint8_t*)Raw;
         uint8_t* dst = (uint8_t*)Surface;
 
+        // Mouse sprites aren't stored in VRAM so we only copy the new mouse
+        // shape in case it changes.
         if (Raw != Last_Raw) {
             Raw = Last_Raw;
 
@@ -145,8 +149,8 @@ public:
         const int x_scaled = ((X - HotX) * 256) / 320;
         const int y_scaled = ((Y - HotY) * 192) / 200;
 
-        oamSetXY(&oamMain, 0, x_scaled, y_scaled);
-        oamUpdate(&oamMain);
+        oamSetXY(&oamSub, 0, x_scaled, y_scaled);
+        oamUpdate(&oamSub);
     }
 
     inline void VBlank_Mouse()
@@ -238,8 +242,19 @@ void VBlank_Mouse()
 
 bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
+    // Allocate memory for our console.  This has to be static because it must
+    // persists when this function exit, even if only used here.
+    static PrintConsole cs0;
+
     powerOn(POWER_ALL);
-    consoleDemoInit();
+
+    // Allocate 128Kb for the console on the upper screen.  It is a bit
+    // overkill, but we got plenty of VRAM so far so it is OK.
+    vramSetBankA(VRAM_A_MAIN_BG_0x06000000);
+    videoSetMode(MODE_0_2D);
+
+    // Initialize the console on the top screen.
+    consoleInit(&cs0, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, true, true);
 
     // We update the mouse position on VBlank interrupts, so if the game drop
     // frames the cursor update doesn't lag, improving gameplay.
@@ -255,25 +270,24 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     TIMER0_CR = TIMER_DIV_1024 | TIMER_ENABLE;
     TIMER1_CR = TIMER_CASCADE | TIMER_ENABLE;
 
+    // Allocate 128kb of VRAM for the background that will hold the visible surface.
+    // The backgroung is 512x256, which is 128Kb, a full memory bank.
+    vramSetBankC(VRAM_C_SUB_BG);
+
     // Put DS into 2D mode with extended background scaling/rotation support. This
     // is necessary so we can downscale the game to fit into the DS low resolution
     // screen.
-    videoSetMode(MODE_5_2D | DISPLAY_BG3_ACTIVE);
-    bg3 = bgInit(3, BgType_Bmp8, BgSize_B8_512x512, 0, 0);
-
-    // Allocate 128kb of VRAM for the background that will hold the visible surface.
-    // The backgroung is 512x512, but only 512x200 pixels are used and therefore
-    // there is no need to allocate a second memory bank for it.
-    vramSetBankA(VRAM_A_MAIN_BG_0x06000000);
+    videoSetModeSub(MODE_3_2D | DISPLAY_BG3_ACTIVE);
+    bg3 = bgInitSub(3, BgType_Bmp8, BgSize_B8_512x256, 0, 0);
 
     // Set downscaling 320x200 => 256x192
-    REG_BG3CNT = BG_BMP8_512x512;  // BG3 Control register, 8 bits
-    REG_BG3PA = (320 * 256) / 256; //1 << 8;
-    REG_BG3PB = 0;                 // BG SCALING X
-    REG_BG3PC = 0;                 // BG SCALING Y
-    REG_BG3PD = (200 * 256) / 192; // << 8;
-    REG_BG3X = 0;
-    REG_BG3Y = 0;
+    REG_BG3CNT_SUB = BG_BMP8_512x256;  // BG3 Control register, 8 bits
+    REG_BG3PA_SUB = (320 * 256) / 256; //1 << 8;
+    REG_BG3PB_SUB = 0;                 // BG SCALING X
+    REG_BG3PC_SUB = 0;                 // BG SCALING Y
+    REG_BG3PD_SUB = (200 * 256) / 192; // << 8;
+    REG_BG3X_SUB = 0;
+    REG_BG3Y_SUB = 0;
 
     bgUpdate();
 
@@ -386,10 +400,10 @@ void Set_DD_Palette(void* palette)
         g = (unsigned char)rcolors[i * 3 + 1] << 2;
         b = (unsigned char)rcolors[i * 3 + 2] << 2;
 
-        BG_PALETTE[i] = RGB8(r, g, b);
+        BG_PALETTE_SUB[i] = RGB8(r, g, b);
     }
 
-    HWCursor.Set_Cursor_Palette(BG_PALETTE);
+    HWCursor.Set_Cursor_Palette(BG_PALETTE_SUB);
 }
 
 void Wait_Blit(void)
