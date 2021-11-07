@@ -99,9 +99,10 @@ Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x
                 src += src_pitch;
             }
         } else {
-            if (((uintptr_t)src) % 4 == 0) {
+
+            if ((uintptr_t)src % 4 == 0 && (uintptr_t)dst % 4 == 0) {
                 while (h-- != 0) {
-                    bus = (bus + 1) % 3;
+                    bus = (bus + 1) % 4;
 
                     /* Flush the cache here, else we get artifacts on the
                        screen.  It only happens on real hardware.*/
@@ -110,18 +111,9 @@ Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x
                     dst += dst_pitch;
                     src += src_pitch;
                 }
-            } else if (((uintptr_t)src) % 2 == 0) {
-                while (h-- != 0) {
-                    bus = (bus + 1) % 3;
-
-                    /* For some reason flushing is not required here.  */
-                    dmaCopyHalfWordsAsynch(bus, src, dst, w);
-                    dst += dst_pitch;
-                    src += src_pitch;
-                }
             } else {
+                /* src or dst is unaligned. This happens when scrolling the screen.  */
                 while (h-- != 0) {
-                    /* For some reason flushing is not required here.  */
                     dmaCopyAsynch(src, dst, w);
                     dst += dst_pitch;
                     src += src_pitch;
