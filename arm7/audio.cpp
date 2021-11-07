@@ -681,37 +681,65 @@ void Sound_Update()
 template <int MESSAGES_MAX> class MessageQueue
 {
 public:
+    MessageQueue()
+    {
+        memset(this, 0, sizeof(*this));
+    }
+
     int Pop_Message(USR1::FifoMessage* msg)
     {
+        int ret = 0;
+
+        if (__atomic_test_and_set(&SpinLock, __ATOMIC_ACQUIRE) == true) {
+            // Can't acquire lock so we skip this message.
+            return ret;
+        }
+
         if (Distance == 0) {
-            return 0;
+            // Queue is empty so we have nothing to process.
+            goto pop_message_unlock;
         }
 
         memcpy(msg, &Messages[Tail], sizeof(*msg));
         Tail = (Tail + 1) % MESSAGES_MAX;
         Distance--;
+        ret = 1;
 
-        return 1;
+    pop_message_unlock:
+        // Unlock spinlock before returning
+        __atomic_clear(&SpinLock, __ATOMIC_RELEASE);
+        return ret;
     }
 
     int Push_Message(USR1::FifoMessage* msg)
     {
-        while (Distance >= MESSAGES_MAX) {
-            Tail = (Tail + 1) % MESSAGES_MAX;
-            Distance--;
+        int ret = 0;
+
+        if (__atomic_test_and_set(&SpinLock, __ATOMIC_ACQUIRE) == true) {
+            // Can't acquire lock so we skip this message.
+            return ret;
+        }
+
+        if (Distance >= MESSAGES_MAX) {
+            // Queue is full so we drop this message.
+            goto push_message_unlock;
         }
 
         memcpy(&Messages[Head], msg, sizeof(*msg));
         Head = (Head + 1) % MESSAGES_MAX;
         Distance++;
+        ret = 1;
 
-        return 1;
+    push_message_unlock:
+        __atomic_clear(&SpinLock, __ATOMIC_RELEASE);
+        return ret;
     }
 
 private:
     USR1::FifoMessage Messages[MESSAGES_MAX];
     int Head, Tail;
     int Distance;
+    volatile u8 SpinLock;
 };
 
 static MessageQueue<16> MQueue;
@@ -806,8 +834,7 @@ void Process_Queue()
         u32 size = msg.SoundVQAChunk.size;
         u8 volume = msg.SoundVQAChunk.volume;
         u8 bits = msg.SoundVQAChunk.bits;
-
-        unsigned format = format = SoundTracker::DS_Sound_Format(SCOMP_NONE, bits);
+        unsigned format = SoundTracker::DS_Sound_Format(SCOMP_NONE, bits);
 
         SCHANNEL_SOURCE(VQA_CHANNEL) = (u32)sample;
         SCHANNEL_REPEAT_POINT(VQA_CHANNEL) = 0;
@@ -816,7 +843,7 @@ void Process_Queue()
         SCHANNEL_CR(VQA_CHANNEL) =
             SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(64) | (format << 29) | (SOUND_REPEAT);
 
-        SCHANNEL_REPEAT_POINT(7) = 0;
+        SCHANNEL_REPEAT_POINT(VQA_CHANNEL) = 0;
     }
 }
 
