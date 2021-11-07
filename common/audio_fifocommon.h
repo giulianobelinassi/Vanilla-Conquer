@@ -1,7 +1,7 @@
 #ifndef AUDIO_FIFOCOMMON
 #define AUDIO_FIFOCOMMON
 
-#define MUSIC_CHUNK_SIZE 65536
+#define MUSIC_CHUNK_SIZE 32768
 
 // USR1: ARM9 to ARM7
 namespace USR1
@@ -22,6 +22,8 @@ namespace USR1
         SOUND_SET_MASTER_VOL = 9 << 20,
         MIC_STOP = 10 << 20,
         MUSIC_CHUNK_UPDATED = 11 << 20,
+        STOP_SAMPLE_HANDLE = 12 << 20,
+        STOP_SAMPLE = 13 << 20,
     } FifoSoundCommand;
 
     typedef enum
@@ -49,7 +51,7 @@ namespace USR1
             struct
             {
                 const void* data;
-                u32 handle;
+                u16 handle;
                 u16 freq;
                 u8 volume;
                 u8 pan;
