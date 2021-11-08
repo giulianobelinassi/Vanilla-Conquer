@@ -675,6 +675,18 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             printf("Release Right mouse button\n");
         }
 
+        if (keys_down & KEY_START) {
+            Put_Key_Message(VK_ESCAPE, false);
+        } else if (keys_up & KEY_START) {
+            Put_Key_Message(VK_ESCAPE, true);
+        }
+
+        if (keys_down & KEY_X) {
+            Put_Key_Message(VK_TAB, false);
+        } else if (keys_up & KEY_START) {
+            Put_Key_Message(VK_TAB, true);
+        }
+
         position_old = position_now;
     }
 #endif
