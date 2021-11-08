@@ -36,6 +36,9 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#ifdef _NDS
+#include <nds.h>
+#endif
 
 #define SCROLL_DELAY 1
 
@@ -87,6 +90,26 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
 #ifndef REMASTER_BUILD
     static DirType direction;
     bool player_scrolled = false;
+
+#ifdef _NDS
+    // Hack scroll in DPAD
+    uint32_t keys_current = keysCurrent();
+    x = 160;
+    y = 100;
+
+    if (keys_current & KEY_UP) {
+        y -= 100;
+    }
+    if (keys_current & KEY_DOWN) {
+        y += 99;
+    }
+    if (keys_current & KEY_LEFT) {
+        x -= 160;
+    }
+    if (keys_current & KEY_RIGHT) {
+        x += 159;
+    }
+#endif
 
     /*
 	**	If rubber band mode is in progress, then don't allow scrolling of the tactical map.

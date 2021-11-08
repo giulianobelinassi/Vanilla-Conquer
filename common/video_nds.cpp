@@ -258,7 +258,7 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 
     // We update the mouse position on VBlank interrupts, so if the game drop
     // frames the cursor update doesn't lag, improving gameplay.
-    irqSet(IRQ_VBLANK, VBlank_Mouse);
+    //irqSet(IRQ_VBLANK, VBlank_Mouse);
 
     // Install the default Nintendo DS exception handler. It sucks, but that is
     // what we got.

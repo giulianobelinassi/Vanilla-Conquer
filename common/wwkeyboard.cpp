@@ -616,55 +616,66 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
     }
 #elif defined(_NDS)
     if (!Is_Buffer_Full()) {
+        static touchPosition position_old = {0};
         static uint32_t keys_old = 0;
 
-        int x = 0, y = 0;
-        unsigned short mkey = 0;
-        bool down = false;
-        bool up = false;
-
-        /* Calling keysDown() and keysUp() slows down the game too much.
-           Use keysHeld as it query data directly from the ARM7 chip.  */
+        touchPosition position_now;
 
         uint32_t keys_current = keysCurrent();
         uint32_t keys_down = keys_current & ~keys_old;
         uint32_t keys_up = (keys_current ^ keys_old) & (~keys_current);
         keys_old = keys_current;
 
-        // Mouse update is in video_nds.cpp.  We use a vblank interrupt
-        // handler for that so the cursor still moves smooth on low framerate.
+        // Read new touch screen position.
+        touchRead(&position_now);
 
-        if (keys_down & KEY_B) {
-            Get_Video_Mouse(x, y);
-            mkey = VK_LBUTTON;
-            down = true;
-        } else if (keys_down & KEY_Y) {
-            Get_Video_Mouse(x, y);
-            mkey = VK_RBUTTON;
-            down = true;
-        } else if (keys_down & KEY_X) {
-            Put_Key_Message(DVK_ENTER, false);
+        // Raw contains touch position without any kind of system correction
+        // with regard to touch position.  Use that to know if the user is
+        // touching something.
+        bool was_touching = position_old.rawx | position_old.rawy;
+        bool is_touching = position_now.rawx | position_now.rawy;
+
+        if (is_touching) {
+            int x_scaled_now = (position_now.px * 320) / 256;
+            int y_scaled_now = (position_now.py * 200) / 192;
+
+            int old_x;
+            int old_y;
+
+            Get_Video_Mouse(old_x, old_y);
+
+            int dx = x_scaled_now - old_x;
+            int dy = y_scaled_now - old_y;
+            Move_Video_Mouse(dx, dy);
+
+            if (!was_touching) {
+                int x, y;
+                Get_Video_Mouse(x, y);
+
+                Put_Mouse_Message(VK_LBUTTON, x, y, false);
+            }
+        } else /* !is_touching */ {
+            if (was_touching) {
+                int x, y;
+                // Get scaled cursor position.
+                Get_Video_Mouse(x, y);
+                Put_Mouse_Message(VK_LBUTTON, x, y, true);
+            }
         }
 
-        if (down) {
-            Put_Mouse_Message(mkey, x, y, false);
+        if (keys_down & KEY_L) {
+            int x, y;
+            Get_Video_Mouse(x, y);
+            Put_Mouse_Message(VK_RBUTTON, x, y, false);
+            printf("Press Right mouse button\n");
+        } else if (keys_up & KEY_L) {
+            int x, y;
+            Get_Video_Mouse(x, y);
+            Put_Mouse_Message(VK_RBUTTON, x, y, true);
+            printf("Release Right mouse button\n");
         }
 
-        if (keys_up & KEY_B) {
-            Get_Video_Mouse(x, y);
-            mkey = VK_LBUTTON;
-            up = true;
-        } else if (keys_up & KEY_Y) {
-            Get_Video_Mouse(x, y);
-            mkey = VK_RBUTTON;
-            up = true;
-        } else if (keys_down & KEY_X) {
-            Put_Key_Message(DVK_ENTER, true);
-        }
-
-        if (up) {
-            Put_Mouse_Message(mkey, x, y, true);
-        }
+        position_old = position_now;
     }
 #endif
 }
