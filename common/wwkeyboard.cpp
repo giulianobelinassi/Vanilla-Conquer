@@ -696,18 +696,44 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             }
         }
 
-        if (keys_down & KEY_L) {
+        if (keys_down & KEY_L && !(keys_current & KEY_B)) {
             int x, y;
             Get_Video_Mouse(x, y);
             Put_Mouse_Message(VK_RBUTTON, x, y, false);
-            printf("Press Right mouse button\n");
-        } else if (keys_up & KEY_L) {
+        } else if (keys_up & KEY_L && !(keys_current & KEY_B)) {
             int x, y;
             Get_Video_Mouse(x, y);
             Put_Mouse_Message(VK_RBUTTON, x, y, true);
-            printf("Release Right mouse button\n");
         }
 
+        if (keys_down & KEY_B) {
+            Put_Key_Message(VK_CONTROL, false);
+        } else if (keys_up & KEY_B) {
+            Put_Key_Message(VK_CONTROL, true);
+        }
+
+        if (keys_current & KEY_L || keys_current & KEY_B) {
+            if (keys_down & KEY_UP) {
+                Put_Key_Message(VK_1, false);
+            } else if (keys_up & KEY_UP) {
+                Put_Key_Message(VK_1, true);
+            }
+            if (keys_down & KEY_RIGHT) {
+                Put_Key_Message(VK_2, false);
+            } else if (keys_up & KEY_RIGHT) {
+                Put_Key_Message(VK_2, true);
+            }
+            if (keys_down & KEY_DOWN) {
+                Put_Key_Message(VK_3, false);
+            } else if (keys_up & KEY_DOWN) {
+                Put_Key_Message(VK_3, true);
+            }
+            if (keys_down & KEY_LEFT) {
+                Put_Key_Message(VK_4, false);
+            } else if (keys_up & KEY_LEFT) {
+                Put_Key_Message(VK_4, true);
+            }
+        }
         if (keys_down & KEY_START) {
             Put_Key_Message(VK_ESCAPE, false);
         } else if (keys_up & KEY_START) {
@@ -715,9 +741,26 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
         }
 
         if (keys_down & KEY_X) {
-            Put_Key_Message(VK_TAB, false);
+            Put_Key_Message(VK_G, false);
         } else if (keys_up & KEY_START) {
-            Put_Key_Message(VK_TAB, true);
+            Put_Key_Message(VK_G, true);
+        }
+
+        if (keys_down & KEY_Y) {
+            Put_Key_Message(VK_X, false);
+        } else if (keys_up & KEY_START) {
+            Put_Key_Message(VK_X, true);
+        }
+
+        if (keys_down & KEY_A) {
+            Put_Key_Message(VK_ALT, false);
+        } else if (keys_up & KEY_A) {
+            Put_Key_Message(VK_ALT, true);
+        }
+        if (keys_down & KEY_R) {
+            Put_Key_Message(VK_H, false);
+        } else if (keys_up & KEY_R) {
+            Put_Key_Message(VK_H, true);
         }
 
         position_old = position_now;

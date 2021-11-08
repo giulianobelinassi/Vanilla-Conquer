@@ -92,22 +92,27 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
     bool player_scrolled = false;
 
 #ifdef _NDS
+    int true_x = x;
+    int true_y = y;
+
     // Hack scroll in DPAD
     uint32_t keys_current = keysCurrent();
     x = 160;
     y = 100;
 
-    if (keys_current & KEY_UP) {
-        y -= 100;
-    }
-    if (keys_current & KEY_DOWN) {
-        y += 99;
-    }
-    if (keys_current & KEY_LEFT) {
-        x -= 160;
-    }
-    if (keys_current & KEY_RIGHT) {
-        x += 159;
+    if (!(keys_current & KEY_L) && !(keys_current & KEY_B)) {
+        if (keys_current & KEY_UP) {
+            y -= 100;
+        }
+        if (keys_current & KEY_DOWN) {
+            y += 99;
+        }
+        if (keys_current & KEY_LEFT) {
+            x -= 160;
+        }
+        if (keys_current & KEY_RIGHT) {
+            x += 159;
+        }
     }
 #endif
 
@@ -236,6 +241,11 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
         }
     }
 #endif
+#ifdef _NDS
+    x = true_x;
+    y = true_y;
+#endif
+
     HelpClass::AI(input, x, y);
 }
 
