@@ -1613,6 +1613,11 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
     */
     PseudoSeenBuff->Blit(SysMemPage);
 
+#ifdef _NDS
+    // Nintendo DS doesn't have a keyboard, so we hack something for the user.
+    strcpy(str, ScenarioName);
+#endif
+
     do {
         Call_Back();
         Animate_Score_Objs();
@@ -1679,7 +1684,7 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
                 }
             }
         }
-    } while (key != KN_RETURN && key != KN_KEYPAD_RETURN && key != VK_LBUTTON);
+    } while (key != KN_RETURN && key != KN_KEYPAD_RETURN && key != VK_LBUTTON && key != VK_ESCAPE);
 }
 
 void Animate_Cursor(int pos, int ypos)

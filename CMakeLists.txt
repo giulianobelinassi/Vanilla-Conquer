@@ -57,7 +57,7 @@ if(NOT MSVC)
     elseif(NDS)
         # -g is useless in DS, as there is no debugger capable of parsing ELF
         # objects.
-        set(CMAKE_CXX_FLAGS_DEBUG "-O2")
+        set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g3")
     else()
         set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O2 -fsanitize=undefined")
     endif()
