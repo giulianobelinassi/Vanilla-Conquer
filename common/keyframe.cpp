@@ -158,8 +158,8 @@ void Check_Use_Compressed_Shapes()
     OriginalUseBigShapeBuffer = false;
 #else
     // BigShapeBuffer is broken in this branch
-    UseBigShapeBuffer = false;
-    OriginalUseBigShapeBuffer = false;
+    UseBigShapeBuffer = true;
+    OriginalUseBigShapeBuffer = true;
 #endif
 }
 
@@ -277,6 +277,10 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
                 keyfr.y = TotalSlotsUsed;
                 TotalSlotsUsed++;
             }
+            // Commit back to the original pointer.
+            memcpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, x)), &keyfr.x, sizeof(unsigned short));
+            memcpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, y)), &keyfr.y, sizeof(unsigned short));
+
             /*
             ** Allocate and clear the memory for the shape info
             */
