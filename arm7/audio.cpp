@@ -678,6 +678,7 @@ void Sound_Update()
 // End software decompression code.
 //-----------------------------------------------------------------------------
 
+// MESSAGES_MAX must be a power of two.
 template <int MESSAGES_MAX> class MessageQueue
 {
 public:
@@ -688,61 +689,41 @@ public:
 
     int Pop_Message(USR1::FifoMessage* msg)
     {
-        int ret = 0;
-
-        if (__atomic_test_and_set(&SpinLock, __ATOMIC_ACQUIRE) == true) {
-            // Can't acquire lock so we skip this message.
-            return ret;
-        }
-
-        if (Distance == 0) {
-            // Queue is empty so we have nothing to process.
-            goto pop_message_unlock;
-        }
+        if (Is_Empty())
+            return 0;
 
         memcpy(msg, &Messages[Tail], sizeof(*msg));
         Tail = (Tail + 1) % MESSAGES_MAX;
-        Distance--;
-        ret = 1;
-
-    pop_message_unlock:
-        // Unlock spinlock before returning
-        __atomic_clear(&SpinLock, __ATOMIC_RELEASE);
-        return ret;
+        return 1;
     }
 
     int Push_Message(USR1::FifoMessage* msg)
     {
-        int ret = 0;
-
-        if (__atomic_test_and_set(&SpinLock, __ATOMIC_ACQUIRE) == true) {
-            // Can't acquire lock so we skip this message.
-            return ret;
-        }
-
-        if (Distance >= MESSAGES_MAX) {
-            // Queue is full so we drop this message.
-            goto push_message_unlock;
+        if (Is_Full()) {
+            return 0;
         }
 
         memcpy(&Messages[Head], msg, sizeof(*msg));
         Head = (Head + 1) % MESSAGES_MAX;
-        Distance++;
-        ret = 1;
-
-    push_message_unlock:
-        __atomic_clear(&SpinLock, __ATOMIC_RELEASE);
-        return ret;
+        return 1;
     }
 
 private:
+    inline bool Is_Full(void)
+    {
+        return (Tail + 1) % MESSAGES_MAX == Head;
+    }
+
+    inline bool Is_Empty(void)
+    {
+        return Head == Tail;
+    }
+
     USR1::FifoMessage Messages[MESSAGES_MAX];
-    int Head, Tail;
-    int Distance;
-    volatile u8 SpinLock;
+    unsigned Head, Tail;
 };
 
-static MessageQueue<16> MQueue;
+static MessageQueue<32> MQueue;
 
 //---------------------------------------------------------------------------------
 void user01CommandHandler(u32 command, void* userdata)
