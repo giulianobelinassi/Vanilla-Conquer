@@ -470,27 +470,20 @@ public:
         , windowSurface(nullptr)
     {
         if (w == 320 && h == 200) {
+            // The DS renderer works as follows: we pass the background
+            // buffer in VRAM to the game's software engine, which draws
+            // things there. The background is a 512x512 surface, but
+            // only 512x200 pixels are used.
+
+            // Actually, we should allocate different regions of memory for
+            // the hidbuf, but it seems to be unused so alias with the
+            // seenbuf so at least the game doens't crash if it is touched.
+            surface = (char*)bgGetGfxPtr(bg3);
+            Pitch = 512;
 
             if (flags & GBC_VISIBLE) {
-                // The DS renderer works as follows: we pass the background
-                // buffer in VRAM to the game's software engine, which draws
-                // things there. The background is a 512x512 surface, but
-                // only 512x200 pixels are used.
-
-                surface = (char*)bgGetGfxPtr(bg3);
                 windowSurface = surface;
                 frontSurface = this;
-                Pitch = 512;
-            } else {
-                // If the renderer is invisible then there is no need to
-                // align to the visible pitch, so 320 wide is enough.
-                surface = (char*)malloc(320 * 200);
-                Pitch = 320;
-                if (!surface) {
-                    printf("ERROR - Can't allocate surface buffer\n");
-                    while (1)
-                        ;
-                }
             }
         } else {
             swiWaitForVBlank();
@@ -504,8 +497,6 @@ public:
     {
         if (frontSurface == this) {
             frontSurface = NULL;
-        } else if (surface) {
-            free(surface);
         }
     }
 
