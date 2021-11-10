@@ -61,9 +61,13 @@ typedef struct
 } KeyFrameHeaderType;
 
 #pragma pack(pop)
-
-#define INITIAL_BIG_SHAPE_BUFFER_SIZE 12000 * 1024
-#define THEATER_BIG_SHAPE_BUFFER_SIZE 2000 * 1024
+#ifdef _NDS
+# define INITIAL_BIG_SHAPE_BUFFER_SIZE 6016 * 1024
+# define THEATER_BIG_SHAPE_BUFFER_SIZE 1000 * 1024
+#else
+# define INITIAL_BIG_SHAPE_BUFFER_SIZE 12000 * 1024
+# define THEATER_BIG_SHAPE_BUFFER_SIZE 2000 * 1024
+#endif
 #define UNCOMPRESS_MAGIC_NUMBER       56789
 
 static unsigned short CurrentUncompressMagicNum = UNCOMPRESS_MAGIC_NUMBER;
@@ -166,6 +170,7 @@ void Reallocate_Big_Shape_Buffer()
         ** It may still be possible to continue with compressed shapes
         */
         if (!BigShapeBufferStart) {
+            DBG_LOG("Out of Memory: disabling BigShapeBuffer");
             UseBigShapeBuffer = false;
             return;
         }
@@ -192,8 +197,8 @@ void Check_Use_Compressed_Shapes()
 
 #ifdef _NDS
     // mrparrot 03/10/2021: Nintendo DS doesn't have enough memory to run uncompressed shapes.
-    UseBigShapeBuffer = false;
-    OriginalUseBigShapeBuffer = false;
+    UseBigShapeBuffer = true;
+    OriginalUseBigShapeBuffer = true;
 #else
     // BigShapeBuffer is broken in this branch
     UseBigShapeBuffer = true;
@@ -291,6 +296,14 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
             */
             TheaterShapeBufferStart = (char*)Alloc(TheaterShapeBufferLength, MEM_NORMAL);
             TheaterShapeBufferPtr = TheaterShapeBufferStart;
+        }
+
+        int shpbuffer_free = ((uintptr_t)BigShapeBufferStart + BigShapeBufferLength) - (uintptr_t)BigShapeBufferPtr;
+        static int last_shpbuffer_free;
+
+        if (shpbuffer_free != last_shpbuffer_free) {
+            DBG_LOG("Used shapebuffer: %dk\n", shpbuffer_free / 1024);
+            last_shpbuffer_free = shpbuffer_free;
         }
 
         /*

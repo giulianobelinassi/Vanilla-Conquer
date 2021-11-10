@@ -44,7 +44,7 @@ bool Is_Sample_Playing(void const* sample)
     return 0;
 };
 void Stop_Sample_Playing(void const* sample){};
-int Play_Sample(void const* sample, int priority, int volume, signed short panloc)
+int Play_Sample(void const* sample, int priority, int volume, signed short panloc, bool hwuncompress)
 {
     return 1;
 };
