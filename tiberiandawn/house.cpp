@@ -4850,18 +4850,19 @@ void HouseClass::Check_Pertinent_Structures(void)
  *=============================================================================================*/
 void HouseClass::Init_Unit_Trackers(void)
 {
+
+#ifndef _NDS
     AircraftTotals.Init();
     InfantryTotals.Init();
     UnitTotals.Init();
     BuildingTotals.Init();
-
     DestroyedAircraft.Init();
     DestroyedInfantry.Init();
     DestroyedUnits.Init();
     DestroyedBuildings.Init();
-
     CapturedBuildings.Init();
     TotalCrates.Init(); // 15 crate types
+#endif
 }
 
 #ifdef USE_RA_AI
