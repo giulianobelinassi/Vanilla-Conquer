@@ -4845,6 +4845,7 @@ void HouseClass::Check_Pertinent_Structures(void)
  *=============================================================================================*/
 void HouseClass::Init_Unit_Trackers(void)
 {
+#ifndef _NDS
     AircraftTotals = new UnitTrackerClass((int)AIRCRAFT_COUNT);
     InfantryTotals = new UnitTrackerClass((int)INFANTRY_COUNT);
     UnitTotals = new UnitTrackerClass((int)UNIT_COUNT);
@@ -4857,6 +4858,7 @@ void HouseClass::Init_Unit_Trackers(void)
 
     CapturedBuildings = new UnitTrackerClass((int)STRUCT_COUNT);
     TotalCrates = new UnitTrackerClass(TOTAL_CRATE_TYPES); // 15 crate types
+#endif
 }
 
 /***********************************************************************************************
@@ -4873,6 +4875,7 @@ void HouseClass::Init_Unit_Trackers(void)
  *=============================================================================================*/
 void HouseClass::Free_Unit_Trackers(void)
 {
+#ifndef _NDS
     if (AircraftTotals) {
         delete AircraftTotals;
         AircraftTotals = NULL;
@@ -4922,6 +4925,7 @@ void HouseClass::Free_Unit_Trackers(void)
         delete TotalCrates;
         TotalCrates = NULL;
     }
+#endif
 }
 
 #ifdef USE_RA_AI

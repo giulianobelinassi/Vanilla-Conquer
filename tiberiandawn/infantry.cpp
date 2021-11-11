@@ -262,10 +262,11 @@ InfantryClass::InfantryClass(InfantryType classid, HousesType house)
     /*
     ** Keep count of the number of units created. Dont track civilians.
     */
+#ifndef _NDS
     if (!Class->IsCivilian && GameToPlay == GAME_INTERNET) {
         House->InfantryTotals->Increment_Unit_Total((int)classid);
     }
-
+#endif
 #ifdef USE_RA_AI
     //
     // Added for RA AI in TD. ST - 7/26/2019 9:12AM
