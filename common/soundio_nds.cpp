@@ -105,9 +105,7 @@ public:
         }
 
         if (Buffer == NULL) {
-            Buffer = (char*)calloc(2, MUSIC_CHUNK_SIZE);
-        } else {
-            memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
+            Buffer = (char*)malloc(2 * MUSIC_CHUNK_SIZE);
         }
 
         if (Buffer == NULL) {
@@ -116,11 +114,11 @@ public:
                 ;
         }
 
+        memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
+
         bytes = Read_File(FileHandle, Buffer, 2 * MUSIC_CHUNK_SIZE);
         if (bytes == 0) {
             IsPlaying = false;
-            free(Buffer);
-            Buffer = NULL;
             return INVALID_AUDIO_HANDLE;
         }
 
@@ -133,14 +131,11 @@ public:
 
     inline int Stop_File_Stream()
     {
-        Close_File(FileHandle);
-
-        free(Buffer);
-        Buffer = NULL;
         ShouldBeUpdated = 0;
         IsPlaying = false;
         if (FileHandle >= 0)
             Close_File(FileHandle);
+        FileHandle = -1;
         return 0;
     }
 
@@ -156,7 +151,7 @@ public:
 
         ShouldBeUpdated--;
 
-        if (!Buffer)
+        if (!Buffer || !IsPlaying)
             return;
 
         unsigned char* to_update = (unsigned char*)Buffer + ToUpdate * MUSIC_CHUNK_SIZE;

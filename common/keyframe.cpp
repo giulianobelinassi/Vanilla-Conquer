@@ -59,10 +59,10 @@ typedef struct
     unsigned short largest_frame_size;
     short flags;
 } KeyFrameHeaderType;
-
 #pragma pack(pop)
+
 #ifdef _NDS
-# define INITIAL_BIG_SHAPE_BUFFER_SIZE 6016 * 1024
+# define INITIAL_BIG_SHAPE_BUFFER_SIZE 7000 * 1024
 # define THEATER_BIG_SHAPE_BUFFER_SIZE 1000 * 1024
 #else
 # define INITIAL_BIG_SHAPE_BUFFER_SIZE 12000 * 1024

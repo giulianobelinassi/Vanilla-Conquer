@@ -540,9 +540,9 @@ void Map_Selection(void)
     ** Now start the process where we fade the gray earth in.
     */
     greyearth =
-        Open_Animation("GREYERTH.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), localpalette);
+        Open_Animation("GREYERTH.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE), localpalette);
     greyearth2 =
-        Open_Animation("E-BWTOCL.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), grey2palette);
+        Open_Animation("E-BWTOCL.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE), grey2palette);
 
     /*
     ** Load the spinning-globe anim
@@ -555,17 +555,17 @@ void Map_Selection(void)
         progress = Open_Animation(lastscenario ? bosnia : "EUROPE.WSA",
                                   NULL,
                                   0,
-                                  (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE),
+                                  (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE),
                                   progresspalette);
     } else {
         const char* const earth_a = (factor == 1) ? "EARTH_A.WSA" : "HEARTH_A.WSA";
         const char* const safrica = (factor == 1) ? "S_AFRICA.WSA" : "HSAFRICA.WSA";
 
-        anim = Open_Animation(earth_a, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), Palette);
+        anim = Open_Animation(earth_a, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE), Palette);
         progress = Open_Animation(lastscenario ? safrica : "AFRICA.WSA",
                                   NULL,
                                   0,
-                                  (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE),
+                                  (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE),
                                   progresspalette);
     }
 
