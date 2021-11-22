@@ -58,7 +58,7 @@ typedef struct
     short flags;
 } KeyFrameHeaderType;
 
-#define INITIAL_BIG_SHAPE_BUFFER_SIZE 6016 * 1024
+#define INITIAL_BIG_SHAPE_BUFFER_SIZE 7000 * 1024
 #define THEATER_BIG_SHAPE_BUFFER_SIZE 1000 * 1024
 #define UNCOMPRESS_MAGIC_NUMBER       56789
 
