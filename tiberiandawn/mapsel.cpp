@@ -552,7 +552,7 @@ void Map_Selection(void)
         const char* const bosnia = (factor == 1) ? "BOSNIA.WSA" : "HBOSNIA.WSA";
 
         anim = Open_Animation(earth_e, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE), Palette);
-        progress = Open_Animation(lastscenario ? "HBOSNIA.WSA" : "EUROPE.WSA",
+        progress = Open_Animation(lastscenario ? bosnia : "EUROPE.WSA",
                                   NULL,
                                   0,
                                   (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE),
