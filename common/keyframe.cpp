@@ -58,20 +58,22 @@ typedef struct
     short flags;
 } KeyFrameHeaderType;
 
-#define INITIAL_BIG_SHAPE_BUFFER_SIZE 7000 * 1024
+#define INITIAL_BIG_SHAPE_BUFFER_SIZE 6500 * 1024
 #define THEATER_BIG_SHAPE_BUFFER_SIZE 1000 * 1024
 #define UNCOMPRESS_MAGIC_NUMBER       56789
 
-unsigned BigShapeBufferLength = INITIAL_BIG_SHAPE_BUFFER_SIZE;
-unsigned TheaterShapeBufferLength = THEATER_BIG_SHAPE_BUFFER_SIZE;
+static unsigned CurrentUncompressMagicNum = UNCOMPRESS_MAGIC_NUMBER;
+static unsigned BigShapeBufferLength = INITIAL_BIG_SHAPE_BUFFER_SIZE;
+static unsigned TheaterShapeBufferLength = THEATER_BIG_SHAPE_BUFFER_SIZE;
 char* BigShapeBufferStart = nullptr;
 char* TheaterShapeBufferStart = nullptr;
 unsigned int UseBigShapeBuffer = false;
 unsigned int IsTheaterShape = false;
-char* BigShapeBufferPtr = nullptr;
-int TotalBigShapes = 0;
-bool ReallocShapeBufferFlag = false;
-bool OriginalUseBigShapeBuffer = false;
+static char* BigShapeBufferPtr = nullptr;
+static int TotalBigShapes = 0;
+static bool ReallocShapeBufferFlag = false;
+static bool OriginalUseBigShapeBuffer = false;
+static const bool AllowBigShapeBufRealloc = false;
 
 char* TheaterShapeBufferPtr = nullptr;
 int TotalTheaterShapes = 0;
@@ -124,11 +126,27 @@ void Reset_Theater_Shapes(void)
     TheaterSlotsUsed = THEATER_SLOT_START;
 }
 
+void Reset_BigShapeBuffer(void)
+{
+    for (int i = 0; i < TotalSlotsUsed; i++) {
+        delete[] KeyFrameSlots[i];
+        KeyFrameSlots[i] = NULL;
+    }
+
+    BigShapeBufferPtr = BigShapeBufferStart;
+    TotalBigShapes = 0;
+    TotalSlotsUsed = 0;
+}
+
 extern void Memory_Error_Handler();
 
 void Reallocate_Big_Shape_Buffer()
 {
-    if (ReallocShapeBufferFlag) {
+    if (!ReallocShapeBufferFlag)
+        return;
+
+    ReallocShapeBufferFlag = false;
+    if (AllowBigShapeBufRealloc) {
         BigShapeBufferLength += 2000 * 1024; // Extra 2 Mb of uncompressed shape space
         BigShapeBufferPtr -= (uintptr_t)BigShapeBufferStart;
         Memory_Error = nullptr;
@@ -144,6 +162,14 @@ void Reallocate_Big_Shape_Buffer()
             return;
         }
         BigShapeBufferPtr += (uintptr_t)BigShapeBufferStart;
+    } else {
+        // mrparrot 2021-11-22: A better alternative to disabling bigshapebuffer
+        // is flushing and refilling it in the hope of discarding shapes not
+        // very often used, like enemy building animations, radar animations,
+        // and so on.
+        Reset_Theater_Shapes();
+        Reset_BigShapeBuffer();
+        CurrentUncompressMagicNum++;
         ReallocShapeBufferFlag = false;
     }
 }
@@ -266,10 +292,10 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
         }
 
         /*
-        ** If we are running out of memory (<128k left) for uncompressed shapes
+        ** If we are running out of memory (<32k left) for uncompressed shapes
         ** then allocate some more.
         */
-        if (shpbuffer_free < 128 * 1024) {
+        if (shpbuffer_free < 32 * 1024) {
             ReallocShapeBufferFlag = true;
         }
 
@@ -278,8 +304,8 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
         ** allocate memory to keep the pointers to the uncompressed data
         ** for these animation frames
         */
-        if (keyfr.x != UNCOMPRESS_MAGIC_NUMBER) {
-            keyfr.x = UNCOMPRESS_MAGIC_NUMBER;
+        if (keyfr.x != CurrentUncompressMagicNum) {
+            keyfr.x = CurrentUncompressMagicNum;
             if (IsTheaterShape) {
                 keyfr.y = TheaterSlotsUsed;
                 TheaterSlotsUsed++;
