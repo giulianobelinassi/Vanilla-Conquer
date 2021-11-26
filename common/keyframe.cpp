@@ -62,8 +62,8 @@ typedef struct
 #pragma pack(pop)
 
 #ifdef _NDS
-# define INITIAL_BIG_SHAPE_BUFFER_SIZE 6500 * 1024
-# define THEATER_BIG_SHAPE_BUFFER_SIZE 1000 * 1024
+# define INITIAL_BIG_SHAPE_BUFFER_SIZE 6800 * 1024
+# define THEATER_BIG_SHAPE_BUFFER_SIZE 700 * 1024
 #else
 # define INITIAL_BIG_SHAPE_BUFFER_SIZE 12000 * 1024
 # define THEATER_BIG_SHAPE_BUFFER_SIZE 2000 * 1024
@@ -180,6 +180,7 @@ void Reallocate_Big_Shape_Buffer()
         // is flushing and refilling it in the hope of discarding shapes not
         // very often used, like enemy building animations, radar animations,
         // and so on.
+        DBG_LOG("BigShpBuffer memory depleted. Rebuilding...");
         Reset_Theater_Shapes();
         Reset_BigShapeBuffer();
         CurrentUncompressMagicNum++;
@@ -299,11 +300,10 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
         }
 
         int shpbuffer_free = ((uintptr_t)BigShapeBufferStart + BigShapeBufferLength) - (uintptr_t)BigShapeBufferPtr;
-        static int last_shpbuffer_free;
+        int theaterbuffer_free = ((uintptr_t)TheaterShapeBufferStart + TheaterShapeBufferLength) - (uintptr_t)TheaterShapeBufferPtr;
 
-        if (shpbuffer_free != last_shpbuffer_free) {
-            DBG_LOG("Used shapebuffer: %dk\n", shpbuffer_free / 1024);
-            last_shpbuffer_free = shpbuffer_free;
+        if (theaterbuffer_free < 32 * 1024) {
+            DBG_LOG("WARNING: Theater Buffer dangerously low");
         }
 
         /*
