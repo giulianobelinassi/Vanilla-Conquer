@@ -114,7 +114,7 @@ public:
                 ;
         }
 
-        memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
+        //memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
 
         bytes = Read_File(FileHandle, Buffer, 2 * MUSIC_CHUNK_SIZE);
         if (bytes == 0) {
@@ -124,6 +124,7 @@ public:
 
         ToUpdate = 0;
         IsPlaying = true;
+        HasMoreSource = true;
         Handle = Get_Next_Handle();
         Send_Chunk();
         return Handle;
@@ -133,6 +134,7 @@ public:
     {
         ShouldBeUpdated = 0;
         IsPlaying = false;
+        HasMoreSource = false;
         if (FileHandle >= 0)
             Close_File(FileHandle);
         FileHandle = -1;
@@ -155,12 +157,15 @@ public:
             return;
 
         unsigned char* to_update = (unsigned char*)Buffer + ToUpdate * MUSIC_CHUNK_SIZE;
-
-        int bytes = Read_File(FileHandle, to_update, MUSIC_CHUNK_SIZE);
-        if (bytes == 0) {
+        if (HasMoreSource) {
+            int bytes = Read_File(FileHandle, to_update, MUSIC_CHUNK_SIZE);
+            if (bytes == 0) {
+                HasMoreSource = false;
+                Close_File(FileHandle);
+                FileHandle = -1;
+            }
+        } else {
             IsPlaying = false;
-            Close_File(FileHandle);
-            FileHandle = -1;
         }
 
         ToUpdate = (ToUpdate + 1) % 2;
@@ -194,6 +199,7 @@ private:
     int ShouldBeUpdated;
     u16 Handle;
     unsigned char Volume;
+    bool HasMoreSource;
 };
 
 static MusicBuffer MBuffer;

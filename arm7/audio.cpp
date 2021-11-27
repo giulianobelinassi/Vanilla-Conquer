@@ -273,6 +273,15 @@ public:
         return (u16)((u32)OriginalSample & 0xFFFF);
     }
 
+    void Request_Music_Data()
+    {
+        fifoSendValue32(FIFO_USER_02, USR2::MUSIC_REQUEST_CHUNK);
+        QueueBuffer = (char*)OriginalSample + MusicStreamIndex * MUSIC_CHUNK_SIZE;
+        MusicStreamIndex = (MusicStreamIndex + 1) % 2;
+        QueueSize = MUSIC_CHUNK_SIZE;
+        //while(!fifoCheckValue32(FIFO_USER_01));
+    }
+
     inline void Update()
     {
         int current_channel = Get_Channel_Index();
@@ -316,11 +325,7 @@ public:
             Decomp_Buff_Size[to_update] = bytes_read;
 
             if (IsMusic && !QueueBuffer) {
-                fifoSendValue32(FIFO_USER_02, USR2::MUSIC_REQUEST_CHUNK);
-                QueueBuffer = (char*)OriginalSample + MusicStreamIndex * MUSIC_CHUNK_SIZE;
-                MusicStreamIndex = (MusicStreamIndex + 1) % 2;
-                QueueSize = MUSIC_CHUNK_SIZE;
-                //while(!fifoCheckValue32(FIFO_USER_01));
+                Request_Music_Data();
             }
 
             if (bytes_read == 0) {
@@ -532,6 +537,11 @@ int SoundTracker::Play(bool hwuncompress)
         freq = Frequency;
         if (size == 0) {
             SCHANNEL_CR(channel) &= ~SCHANNEL_ENABLE;
+            if (IsMusic && Active) {
+                // Request more data so that the ARM9 chip realize that the
+                // stream ended, so it can queue the next music.
+                Request_Music_Data();
+            }
             Active = false;
         } else {
             Active = true;
