@@ -114,7 +114,7 @@ public:
                 ;
         }
 
-        //memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
+        memset(Buffer, 0, 2 * MUSIC_CHUNK_SIZE);
 
         bytes = Read_File(FileHandle, Buffer, 2 * MUSIC_CHUNK_SIZE);
         if (bytes == 0) {

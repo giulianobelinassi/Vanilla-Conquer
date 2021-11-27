@@ -257,6 +257,9 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 
     powerOn(POWER_ALL);
 
+    // If the ARM9 is set to 67MHz, set it to 133MHz now.
+    setCpuClock(true);
+
     // Allocate 128Kb for the console on the upper screen.  It is a bit
     // overkill, but we got plenty of VRAM so far so it is OK.
     vramSetBankA(VRAM_A_MAIN_BG_0x06000000);
