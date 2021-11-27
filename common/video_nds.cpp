@@ -43,6 +43,7 @@
 #include "video.h"
 #include "video.h"
 #include "wwkeyboard.h"
+#include "wwmouse.h"
 #include <cstdio>
 #include <nds.h>
 #include <stdarg.h>
@@ -93,6 +94,10 @@ public:
                false,
                false,
                false);
+
+        // Disable sprite scaling and rotating, we won't need it and we require
+        // it to be disabled to hide the sprite.
+        oamSub.oamMemory->isRotateScale = false;
     }
 
     inline void Set_Cursor_Palette(const u16* palette)
@@ -149,6 +154,10 @@ public:
         const int x_scaled = ((X - HotX) * 256) / 320;
         const int y_scaled = ((Y - HotY) * 192) / 200;
 
+        // Hide or show the cursor accordingly.
+        oamSub.oamMemory->isHidden = Get_Mouse_State();
+
+        // Update cursor sprite position
         oamSetXY(&oamSub, 0, x_scaled, y_scaled);
         oamUpdate(&oamSub);
     }
