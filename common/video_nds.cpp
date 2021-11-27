@@ -255,7 +255,9 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     // persists when this function exit, even if only used here.
     static PrintConsole cs0;
 
-    powerOn(POWER_ALL);
+    // Only turns on the 2D engine. The 3D chip is thereof disabled and it
+    // should save battery life.
+    powerOn(POWER_ALL_2D);
 
     // If the ARM9 is set to 67MHz, set it to 133MHz now.
     setCpuClock(true);
