@@ -1,125 +1,115 @@
-# Vanilla Conquer
-Vanilla Conquer is a fully portable version of the first generation C&C engine and is capable of running both Tiberian Dawn and Red Alert on multiple platforms. It can also be used for mod development for the Remastered Collection.
+# Vanilla Conquer: Nintendo DSi port
 
-The main focus of Vanilla Conquer is to keep the default out-of-box experience faithful to what the games were back when they were released and work as a drop-in replacement for the original executables while also providing bug fixes, compatiblity and quality of life improvements.
+This is a Nintendo DSi port of Command & Conquer based on Vanilla Conquer.
 
-Current project goals are tracked as [GitHub issues with the goal label](https://github.com/Vanilla-Conquer/Vanilla-Conquer/issues?q=is%3Aissue+is%3Aopen+label%3Agoal).
+Command & Conquer is a Real Strategy Game released in 1995 developed by Westwood Studios and its
+trademark is currently owned by Eletronic Arts. Tiberian Dawn was made freeware
+in 2007, and its sourcecode made public in 2020. Vanilla Conquer is a source port
+with multi-platform support.
 
-## Chat with us
+Currently only VanillaTD is supported but Red Alert support is also planned.
 
-There are rooms on multiple platforms for discussion:
+For playing it on your Nintendo DSi, you will need:
+- A jailbreaked Nintendo DSi capable of running .nds ROMs in DSi mode through the memory card.
+- A memory card with at least 1.4Gb of free space.
+- Assets from DOS Command & Conquer versions: both GDI and Nod discs, with Covert Operations also supported but not necessary.
 
-- [The Assembly Armada](https://discord.gg/UnWK2Tw) on [Discord](https://discord.gg)
-- [#vanilla-conquer:vi.fi](https://matrix.to/#/#vanilla-conquer:vi.fi) on [Matrix](https://matrix.org)
-- [#vanilla-conquer](https://web.libera.chat/?channel=#vanilla-conquer) on [Libera.Chat](https://libera.chat]) IRC network
+## Downloads
 
-All of these rooms are bridged together so people can choose their preferred service. Please be nice to each other.
+- [VanillaTD Nintendo DS ROM](https://github.com/giulianobelinassi/Vanilla-Conquer/releases/download/untagged-fd355ab72125a17202e4/vanillatd.nds).
+- [C&C DOS: GDI disc](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_GDI.zip).
+- [C&C DOS: Nod disc](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_Nod.zip).
+- [C&C Covert Operations disc](https://bigdownloads.cnc-comm.com/cnc1/CNC_Covertops.zip).
 
-## Building
+## Install
 
-We support wide variety of compilers and platforms to target. Vanilla Conquer is known to compile with recent enough gcc, MSVC, mingw-w64 or clang and known to run on Windows, Linux, macOS and BSDs.
+For you to play VanillaTD on your NDSi, you must:
 
-### Windows
+- Download both [GDI](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_GDI.zip) and [Nod](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_Nod.zip) DOS C&C discs.
+- Create `/vanilla-conquer/vanillatd/` path on the root of your flashcard.
+- Extract the content of both GDI and Nod discs into the folders as follows:
+```
+vanilla-conquer/
+└── vanillatd/
+    ├── aud.mix
+    ├── conquer.mix
+    ├── desert.mix
+    ├── gdi
+    │   ├── general.mix
+    │   ├── movies.mix
+    │   └── scores.mix
+    ├── local.mix
+    ├── nod
+    │   ├── general.mix
+    │   ├── movies.mix
+    │   └── scores.mix
+    ├── speech.mix
+    ├── sounds.mix
+    ├── temperat.mix
+    ├── transit.mix
+    └── winter.mix
 
-#### Requirements
+3 directories, 15 files
+```
+Files outside the `gdi` and `nod` folders can be retrieved from either disc, but only the GDI files are tested.
 
-The following components are needed to build Vanilla Conquer executables:
+- Double check if you extracted all files. `speech.mix` is easy to miss.
+- Move the `vanillatd.nds` rom on the root of your memory card.
+- Play.
 
- - [MSVC v142 C++ x86/x64 build tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
- - Windows 10 SDK
- - CMake (installable from MSVC build tools)
- - [SDL2 development libraries, Visual C++](https://libsdl.org/download-2.0.php)
- - [OpenAL Core SDK](https://www.openal.org/downloads/)
+Now, if you want to play the covert operations extension:
+- Download the [Covert Operations](https://bigdownloads.cnc-comm.com/cnc1/CNC_Covertops.zip) disc image.
+- Extract `sc-000.mix`, `sc-001.mix`, and `local.mix` into the `vanilla-conquer/vanillatd` folder.
+- Extract `general.mix`, `movies.mix` and `scores.mix` into `covertops` folder.
+- The final folder will look like this (from a clean install):
 
-Extract SDL2 and OpenAL somewhere you know. If you are building only Remastered dlls you can skip installing SDL2 and OpenAL.
-
-#### Building
-
-In a VS command line window:
-
-```sh
-mkdir build
-cd build
-cmake .. -DSDL2_ROOT_DIR=C:\path\to\SDL2 -DOPENAL_ROOT=C:\path\to\OpenAL
-cmake --build .
+```
+vanilla-conquer/
+└── vanillatd
+    ├── aud.mix
+    ├── conquer.mix
+    ├── covertops
+    │   ├── general.mix
+    │   ├── movies.mix
+    │   └── scores.mix
+    ├── desert.mix
+    ├── gdi
+    │   ├── general.mix
+    │   ├── movies.mix
+    │   └── scores.mix
+    ├── local.mix
+    ├── nod
+    │   ├── general.mix
+    │   ├── movies.mix
+    │   └── scores.mix
+    ├── sc-000.mix
+    ├── sc-001.mix
+    ├── speech.mix
+    ├── sounds.mix
+    ├── temperat.mix
+    ├── transit.mix
+    └── winter.mix
 ```
 
-This will build Vanilla Conquer executables in the build directory. If you are building Remastered dlls you need to configure cmake with `-A win32` and ensure your VS command line is x86.
+## Controls
 
-### Linux / macOS / BSD
+Currently controls are assigned in the following manner, but it may be changed
+in the future as better controls are developed. This one tries to concentrate
+the main functions on the left hand, while the right hand is used to command
+units.
 
-#### Requirements
+- Touchscreen: Command unit (Mouse LCLICK)
+- DPAD: Scroll screen.
+- L: Cancel selection/action (Mouse RCLICK).
+- B: Force attack (CTRL).
+- A: Force trample (ALT).
+- X: Area Guard (G).
+- Y: Scatter Units (X).
+- R: Move viewport to Construction Yard (H).
+- L + DPAD: Select Team #.
+- B + L + DPAD: Assign Team #.
 
-- GNU C++ Compiler (g++) or Clang
-- CMake
-- SDL2
-- OpenAL
+## Bugs
 
-On Debian/Ubuntu you can install the build requirements as follows:
+Report bugs on the issues page in github.
 
-```
-sudo apt-get update
-sudo apt-get install g++ cmake libsdl2-dev libopenal-dev
-```
-
-#### Building
-
-```sh
-mkdir build
-cd build
-cmake ..
-make -j8
-```
-
-This will build Vanilla Conquer executables in the build directory.
-
-## Releases
-
-Binary releases of the latest commit are available from [here](https://github.com/TheAssemblyArmada/Vanilla-Conquer/releases/tag/latest), which is updated whenever new code is merged into the main branch.
-
-## Running
-
-### VanillaTD and VanillaRA
-
-Copy the Vanilla executable (`vanillatd.exe` or `vanillara.exe`) to your legacy game directory, on Windows also copy `SDL2.dll` and `OpenAL32.dll`.
-
-For Tiberian Dawn the final freeware Gold CD release ([GDI](https://www.moddb.com/games/cc-gold/downloads/command-conquer-gold-free-game-gdi-iso), [NOD](https://www.moddb.com/games/cc-gold/downloads/command-conquer-gold-free-game-nod-iso)) works fine.
-
-For Red Alert the freeware [CD release](https://web.archive.org/web/20080901183216/http://www.ea.com/redalert/news-detail.jsp?id=62) works fine as well.
-The official [Red Alert demo](https://www.moddb.com/games/cc-red-alert/downloads/command-conquer-red-alert-demo) is also fully playable.
-The demo supports custom skirmish maps (except interior) and includes one campaign mission for both Allied and Soviet from the retail game.
-
-While it is possible to use the game data from the Remastered Collection, The Ultimate Collection or The First Decade they are currently _not_ supported.
-Any repackaged version that you may already have from any unofficial source is _not_ supported.
-If you encounter a bug that may be data related like invisible things or crashing when using a certain unit please retest with the retail data first before submitting a bug report.
-
-### Remastered
-
-The build process will produce _Vanilla_TD_ and _Vanilla_RA_ directories in your build directory if you enable them with `-DBUILD_REMASTERTD=ON` and `-DBUILD_REMASTERRA=ON`.
-These work as mods for the Remastered Collection.
-
-To manually install a local Remastered mod, launch both games once then head to _My Documents/CnCRemastered/CnCRemastered/Mods_.
-You should see _Tiberian\_Dawn_ and _Red\_Alert_ directories.
-
-#### Tiberian Dawn
-
-Copy the _Vanilla_TD_ directory to the _Tiberian\_Dawn_ directory.
-
-The directory structure should look like this:
-
-    My Documents/CnCRemastered/CnCRemastered/Mods/Tiberian_Dawn/Vanilla_TD/Data/TiberianDawn.dll
-    My Documents/CnCRemastered/CnCRemastered/Mods/Tiberian_Dawn/Vanilla_TD/ccmod.json
-    My Documents/CnCRemastered/CnCRemastered/Mods/Tiberian_Dawn/Vanilla_TD/GameConstants_Mod.xml
-
-You should now see the new mod in the mods list of Tiberian Dawn Remastered.
-
-#### Red Alert
-
-Copy the _Vanilla_RA_ directory to the _Red\_Alert_ directory.
-
-The directory structure should look like this:
-
-    My Documents/CnCRemastered/CnCRemastered/Mods/Red_Alert/Vanilla_RA/Data/RedAlert.dll
-    My Documents/CnCRemastered/CnCRemastered/Mods/Red_Alert/Vanilla_RA/ccmod.json
-
-You should now see the new mod in the mods list of Red Alert Remastered.
