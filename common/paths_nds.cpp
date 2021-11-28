@@ -60,7 +60,7 @@ namespace
 {
     const std::string& User_Home()
     {
-        return std::string("/vanillatd");
+        return std::string("/vanilla-conquer");
     }
 
     std::string Get_Posix_Default(const char* env_var, const char* relative_path)
@@ -90,7 +90,7 @@ namespace
 const char* PathsClass::Program_Path()
 {
     if (ProgramPath.empty()) {
-        ProgramPath = std::string("/vanillatd");
+        ProgramPath = std::string("/vanilla-conquer/") + Suffix;
     }
 
     return ProgramPath.c_str();
@@ -99,7 +99,7 @@ const char* PathsClass::Program_Path()
 const char* PathsClass::Data_Path()
 {
     if (DataPath.empty()) {
-        DataPath = std::string("/vanillatd");
+        DataPath = std::string("/vanilla-conquer/") + Suffix;
     }
 
     return DataPath.c_str();
@@ -108,7 +108,7 @@ const char* PathsClass::Data_Path()
 const char* PathsClass::User_Path()
 {
     if (UserPath.empty()) {
-        UserPath = "/vanillatd";
+        UserPath = std::string("/vanilla-conquer/") + Suffix;
     }
 
     return UserPath.c_str();
@@ -144,5 +144,5 @@ bool PathsClass::Is_Absolute(const char* path)
 
 std::string PathsClass::Argv_Path(const char* cmd_arg)
 {
-    return std::string("/vanillatd");
+    return std::string("/vanilla-conquer");
 }
