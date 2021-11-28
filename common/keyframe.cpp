@@ -300,8 +300,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
         }
 
         int shpbuffer_free = ((uintptr_t)BigShapeBufferStart + BigShapeBufferLength) - (uintptr_t)BigShapeBufferPtr;
-        int theaterbuffer_free =
-            ((uintptr_t)TheaterShapeBufferStart + TheaterShapeBufferLength) - (uintptr_t)TheaterShapeBufferPtr;
+        int theaterbuffer_free = ((uintptr_t)TheaterShapeBufferStart + TheaterShapeBufferLength) - (uintptr_t)TheaterShapeBufferPtr;
 
         if (theaterbuffer_free < 32 * 1024) {
             DBG_LOG("WARNING: Theater Buffer dangerously low");
@@ -472,16 +471,12 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
 
                 return (uintptr_t)buffptr;
             }
-            unsigned vdraw_flags = -1;
-            char* vshape_data = temp_shape_ptr - (uintptr_t)TheaterShapeBufferStart;
-            int vshape_buffer = 1;
 
             memcpy(temp_shape_ptr, buffptr, length);
-            memcpy(TheaterShapeBufferPtr + offsetof(ShapeHeaderType, draw_flags), &vdraw_flags, sizeof(vdraw_flags));
-            memcpy(TheaterShapeBufferPtr + offsetof(ShapeHeaderType, shape_data), &vshape_data, sizeof(vshape_data));
-            memcpy(
-                TheaterShapeBufferPtr + offsetof(ShapeHeaderType, shape_buffer), &vshape_buffer, sizeof(vshape_buffer));
-
+            ((ShapeHeaderType*)TheaterShapeBufferPtr)->draw_flags = -1; // Flag that headers need to be generated
+            ((ShapeHeaderType*)TheaterShapeBufferPtr)->shape_data =
+                temp_shape_ptr - (uintptr_t)TheaterShapeBufferStart;     // pointer to old raw shape data
+            ((ShapeHeaderType*)TheaterShapeBufferPtr)->shape_buffer = 1; // Theater buffer
             *(KeyFrameSlots[keyfr.y] + framenumber) = TheaterShapeBufferPtr - (uintptr_t)TheaterShapeBufferStart;
             TheaterShapeBufferPtr = (char*)(length + (uintptr_t)temp_shape_ptr);
             /*
