@@ -559,7 +559,7 @@ void Map_Selection(void)
                                   progresspalette);
     } else {
         const char* const earth_a = (factor == 1) ? "EARTH_A.WSA" : "HEARTH_A.WSA";
-        const char* const safrica = (factor == 1) ? "SAFRICA.WSA" : "HSAFRICA.WSA";
+        const char* const safrica = (factor == 1) ? "S_AFRICA.WSA" : "HSAFRICA.WSA";
 
         anim = Open_Animation(earth_a, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK | WSA_OPEN_TO_PAGE), Palette);
         progress = Open_Animation(lastscenario ? safrica : "AFRICA.WSA",
