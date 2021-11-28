@@ -45,6 +45,7 @@
 #include "common/gitinfo.h"
 #include "common/tcpip.h"
 #include "common/vqaconfig.h"
+#include "common/paths.h"
 #include <time.h>
 
 /****************************************
@@ -329,21 +330,22 @@ bool Init_Game(int, char*[])
     /*
     ** Need to search the search paths. ST - 3/15/2019 2:18PM
     */
-    const char* path = ".\\";
+    char _path[] = {'.', PathsClass::SEP, '\0'};
+    const char* path = _path;
     char search_path[_MAX_PATH];
     char scan_path[_MAX_PATH];
     Find_File_Data* ffd;
     bool found;
 
     for (int p = 0; p < 100; p++) {
-
         strcpy(search_path, path);
-        if (search_path[strlen(search_path) - 1] != '\\') {
-            strcat(search_path, "\\");
+        if (search_path[strlen(search_path) - 1] != PathsClass::SEP) {
+            char sep[] = {PathsClass::SEP, '\0'};
+            strcat(search_path, sep);
         }
 
         strcpy(scan_path, search_path);
-        strcat(scan_path, "SC*.MIX");
+        strcat(scan_path, "sc*.mix");
         found = Find_First(scan_path, 0, &ffd);
         while (found) {
             char* ptr = (char*)ffd->GetName();
@@ -356,7 +358,7 @@ bool Init_Game(int, char*[])
         }
 
         strcpy(scan_path, search_path);
-        strcat(scan_path, "SS*.MIX");
+        strcat(scan_path, "ss*.MIX");
         found = Find_First(scan_path, 0, &ffd);
         while (found) {
             char* ptr = (char*)ffd->GetName();
