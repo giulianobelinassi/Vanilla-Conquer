@@ -16,7 +16,7 @@ For playing it on your Nintendo DSi, you will need:
 
 ## Downloads
 
-- [VanillaTD Nintendo DS ROM](https://github.com/giulianobelinassi/Vanilla-Conquer/releases/download/untagged-fd355ab72125a17202e4/vanillatd.nds).
+- [VanillaTD Nintendo DS ROM](https://github.com/giulianobelinassi/Vanilla-Conquer/releases/download/nds-v0.1/vanillatd.nds).
 - [C&C DOS: GDI disc](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_GDI.zip).
 - [C&C DOS: Nod disc](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_Nod.zip).
 - [C&C Covert Operations disc](https://bigdownloads.cnc-comm.com/cnc1/CNC_Covertops.zip).
