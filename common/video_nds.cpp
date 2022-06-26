@@ -518,7 +518,7 @@ public:
     {
         return surface;
     }
-    virtual long GetPitch() const
+    virtual int GetPitch() const
     {
         return Pitch;
     }

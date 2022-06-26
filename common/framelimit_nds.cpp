@@ -4,13 +4,9 @@
 
 #include <nds.h>
 
-extern WWMouseClass* WWMouse;
-
-void Video_Render_Frame();
-
 void Update_HWCursor();
 
-void Frame_Limiter(bool force_render)
+void Frame_Limiter(FrameLimitFlags flags)
 {
     Update_HWCursor();
 }

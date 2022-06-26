@@ -360,7 +360,7 @@ int Get_Digi_Handle(void)
     CALLED;
     return DigiHandle;
 }
-long Sample_Length(void const* sample)
+int Sample_Length(void const* sample)
 {
     CALLED;
     return 0;
