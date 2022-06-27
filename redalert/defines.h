@@ -3537,7 +3537,9 @@ typedef enum WaypointEnum : unsigned char
 /****************************************************************************
 **	This is the max number of events supported on one frame.
 */
-#define MAX_EVENTS 256
+// 06/27/2022: Changed by PG to 256. Original seems to be 64.
+//#define MAX_EVENTS 256
+#define MAX_EVENTS 64
 
 /*
 ** New Config structure for .CFG files

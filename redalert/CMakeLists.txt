@@ -275,6 +275,13 @@ if(BUILD_VANILLARA)
     if(WIN32 AND NOT MSVC)
         set_target_properties(VanillaRA PROPERTIES LINK_FLAGS "-mwindows")
     endif()
+    if (NDS)
+        # Generate Nintendo DS ROM
+        add_custom_command(TARGET VanillaRA
+                POST_BUILD
+                COMMAND ${NDSTOOL} ARGS -c ../vanillara.nds -9 ../vanillara -7 ../arm7.elf
+                DEPENDS arm7.elf)
+    endif()
     if(BUILD_WITH_UBSAN)
         target_compile_options(VanillaRA PUBLIC
                     -fsanitize=undefined,float-divide-by-zero,integer,implicit-conversion,implicit-integer-truncation,implicit-integer-arithmetic-value-change,local-bounds,nullability
