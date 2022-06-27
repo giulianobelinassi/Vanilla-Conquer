@@ -44,6 +44,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "mixfile.h"
+#include "mixfile_tail.h"
 #include "ccfile.h"
 
 template class MixFileClass<CCFileClass>;

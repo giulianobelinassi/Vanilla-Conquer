@@ -37,6 +37,7 @@
 #include <sys/time.h>
 #endif
 
+#include "mixfile_tail.h"
 #include "utfargs.h"
 
 void Print_Help()
