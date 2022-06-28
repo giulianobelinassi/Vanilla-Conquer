@@ -97,6 +97,9 @@ void* Alloc(size_t bytes_to_alloc, MemoryFlagType flags)
 #endif // MEM_CHECK
 
     mem_ptr = malloc(bytes_to_alloc);
+    if (mem_ptr == NULL) {
+      DBG_LOG("Unable to allocate memory\n");
+    }
     if (!mem_ptr && Memory_Error) {
         Memory_Error();
     }

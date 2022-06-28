@@ -289,21 +289,37 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
         **
         */
         if (!BigShapeBufferStart) {
+            /* Uninstall Memory_Error temporarly.  */
+            void (*Mem_Error_old)() = Memory_Error;
+            Memory_Error = NULL;
+
             BigShapeBufferStart = (char*)Alloc(BigShapeBufferLength, MEM_NORMAL);
             BigShapeBufferPtr = BigShapeBufferStart;
+
+            if (BigShapeBufferStart == NULL) {
+                /* Can't continue with BigShapeBuffer. Not enough Memory.  */
+                UseBigShapeBuffer = false;
+                OriginalUseBigShapeBuffer = false;
+                Memory_Error = Mem_Error_old;
+                goto bigshpbuffer_error;
+            }
 
             /*
             ** Allocate memory for theater specific uncompressed shapes
             */
             TheaterShapeBufferStart = (char*)Alloc(TheaterShapeBufferLength, MEM_NORMAL);
             TheaterShapeBufferPtr = TheaterShapeBufferStart;
-        }
 
-        int shpbuffer_free = ((uintptr_t)BigShapeBufferStart + BigShapeBufferLength) - (uintptr_t)BigShapeBufferPtr;
-        int theaterbuffer_free = ((uintptr_t)TheaterShapeBufferStart + TheaterShapeBufferLength) - (uintptr_t)TheaterShapeBufferPtr;
-
-        if (theaterbuffer_free < 32 * 1024) {
-            DBG_LOG("WARNING: Theater Buffer dangerously low");
+            if (TheaterShapeBufferStart == NULL) {
+                UseBigShapeBuffer = false;
+                OriginalUseBigShapeBuffer = false;
+                if (BigShapeBufferStart != NULL) {
+                  Free(BigShapeBufferStart);
+                  BigShapeBufferStart = NULL;
+                }
+                Memory_Error = Mem_Error_old;
+                goto bigshpbuffer_error;
+            }
         }
 
         /*
@@ -344,6 +360,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
         }
     }
 
+bigshpbuffer_error:
     // calc buff size
     buffsize = keyfr.width * keyfr.height;
 
