@@ -3363,7 +3363,7 @@ int VQ_Call_Back(unsigned char*, int)
 #endif
     Frame_Limiter();
 
-    if ((BreakoutAllowed || Debug_Flag) && key == KN_ESC) {
+    if ((BreakoutAllowed || Debug_Flag) && (key == KN_ESC || key == VK_LBUTTON)) {
         WWKeyboard->Clear();
         Brokeout = true;
         return (true);
