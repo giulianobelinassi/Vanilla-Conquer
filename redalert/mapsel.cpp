@@ -263,6 +263,7 @@ char const* Map_Selection(void)
     }
     Theme.Fade_Out();
     //	Options.Set_Score_Volume(oldvolume);
+    delete pseudoseenbuff;
 
     //	Scen.ScenVar = (ScenarioVarType)selection;
     // Mono_Printf("Chose variant %d  \n", selection);
