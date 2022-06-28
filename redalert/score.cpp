@@ -100,8 +100,8 @@ void const* Beepy6;
 int ControlQ; // cheat key to skip past score/mapsel screens
 bool StillUpdating;
 
-const char* ScreenNames[2] = {"ALIBACKH.PCX", "SOVBACKH.PCX"};
-const char* AnimNames[2] = {"ALI-TRAN.WSA", "SOV-TRAN.WSA"};
+static const char* ScreenNames[2] = {"ALIBACKH.PCX", "SOVBACKH.PCX"};
+static const char* AnimNames[2] = {"ALI-TRAN.WSA", "SOV-TRAN.WSA"};
 
 struct Fame
 {
@@ -347,6 +347,8 @@ void ScoreClass::Presentation(void)
     static int const _bldggy[2] = {138, 138};
     static int const _bldgny[2] = {150, 150};
 
+    bool dosmode = (RESFACTOR == 1);
+
 #ifdef FIXIT_SCORE_CRASH
     /*
     ** Fix for the score screen crash due to uncompressed shape buffer overflow.
@@ -354,6 +356,8 @@ void ScoreClass::Presentation(void)
     Disable_Uncompressed_Shapes();
 #endif // FIXIT
     PseudoSeenBuff = new GraphicBufferClass(320, 200, (void*)NULL);
+    DBG_LOG("Presentation - Allocated PseudoSeenBuff");
+
     int i;
     void const* yellowptr;
     void const* redptr;
@@ -385,13 +389,13 @@ void ScoreClass::Presentation(void)
     void* anim = Open_Animation(AnimNames[house],
                                 NULL,
                                 0L,
-                                (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE),
+                                (WSAOpenType)(WSA_OPEN_FROM_DISK),
                                 (unsigned char*)ScorePalette.Get_Data());
     unsigned minutes = (unsigned)((ElapsedTime / (int)TIMER_MINUTE)) + 1;
 
     // Load up the shapes for the Nod score screen
-    yellowptr = MFCD::Retrieve("BAR3BHR.SHP");
-    redptr = MFCD::Retrieve("BAR3RHR.SHP");
+    yellowptr = MFCD::Retrieve((dosmode)? "BAR3BLU.SHP" : "BAR3BHR.SHP");
+    redptr = MFCD::Retrieve((dosmode)? "BAR3RED.SHP" : "BAR3RHR.SHP");
 
     /* Change to the six-point font for Text_Print */
     oldfont = Set_Font(ScoreFontPtr);
@@ -417,18 +421,20 @@ void ScoreClass::Presentation(void)
     Call_Back();
     Close_Animation(anim);
 
-    Load_Title_Screen(ScreenNames[house], &HidPage, (unsigned char*)ScorePalette.Get_Data());
-    Increase_Palette_Luminance((unsigned char*)ScorePalette.Get_Data(), 30, 30, 30, 63);
-    ScorePalette.Set(0, nullptr);
-    HidPage.Blit(SeenPage);
-    HidPage.Blit(*PseudoSeenBuff);
+    if (!dosmode) {
+      Load_Title_Screen(ScreenNames[house], &HidPage, (unsigned char*)ScorePalette.Get_Data());
+      Increase_Palette_Luminance((unsigned char*)ScorePalette.Get_Data(), 30, 30, 30, 63);
+      ScorePalette.Set(0, nullptr);
+      HidPage.Blit(SeenPage);
+      HidPage.Blit(*PseudoSeenBuff);
+    }
 
     /*
     ** Background's up, so now load various shapes and animations
     */
-    void const* timeshape = MFCD::Retrieve("TIMEHR.SHP");
-    void const* hiscore1shape = MFCD::Retrieve("HISC1-HR.SHP");
-    void const* hiscore2shape = MFCD::Retrieve("HISC2-HR.SHP");
+    void const* timeshape = MFCD::Retrieve((dosmode)? "TIME.SHP" : "TIMEHR.SHP");
+    void const* hiscore1shape = MFCD::Retrieve((dosmode)? "HISCORE.SHP": "HISC1-HR.SHP");
+    void const* hiscore2shape = MFCD::Retrieve((dosmode)? "HISCORE2.SHP": "HISC2-HR.SHP");
     ScoreObjs[0] = new ScoreTimeClass(238, 2, timeshape, 30, 4);
     ScoreObjs[1] = new ScoreTimeClass(4, 89, hiscore1shape, 10, 4);
     ScoreObjs[2] = new ScoreTimeClass(4, 180, hiscore2shape, 10, 4);
@@ -1128,7 +1134,14 @@ void ScoreClass::Show_Credits(int house, char const pal[])
     int credobj, i;
     int minval, add;
 
-    void const* credshape = MFCD::Retrieve(house ? "CREDSUHR.SHP" : "CREDSAHR.SHP");
+    bool dosmode = (RESFACTOR == 1);
+    void const* credshape;
+
+    if (dosmode) {
+      credshape = MFCD::Retrieve(house ? "CREDSU.SHP" : "CREDSA.SHP");  
+    } else {
+      credshape = MFCD::Retrieve(house ? "CREDSUHR.SHP" : "CREDSAHR.SHP");
+    }
 
     Alloc_Object(new ScorePrintClass(TXT_SCORE_ENDCRED, _credtx[house], _credty[house], pal));
     Call_Back_Delay(15);
@@ -1263,12 +1276,17 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
     */
     HidPage.Blit(HidPage, 0, 100 * RESFACTOR, 0, 0, 100 * RESFACTOR, 100 * RESFACTOR);
 
+#ifdef _NDS
+    // Nintendo DS doesn't have a keyboard, so we hack something for the user.
+    strcpy(str, Scen.ScenarioName);
+#endif
+
     do {
         Call_Back();
         Animate_Score_Objs();
         Animate_Cursor(index, ypos);
         if (WWKeyboard->Check()) {
-            key = WWKeyboard->To_ASCII(WWKeyboard->Get()) & 0xFF;
+            key = WWKeyboard->Get();
             Call_Back();
 
             if (index == MAX_FAMENAME_LENGTH - 2) {
@@ -1355,7 +1373,7 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
         }
 
         Frame_Limiter();
-    } while (key != KA_RETURN); //	} while(key != KN_RETURN && key!=KN_KEYPAD_RETURN);
+    } while (key != KA_RETURN && key != VK_LBUTTON && key != VK_ESCAPE ); //	} while(key != KN_RETURN && key!=KN_KEYPAD_RETURN);
 }
 
 void Animate_Cursor(int pos, int ypos)
