@@ -297,7 +297,9 @@ extern unsigned char MPlayerID[MAX_PLAYERS];
 extern HousesType MPlayerHouses[MAX_PLAYERS];
 extern char MPlayerNames[MAX_PLAYERS][MPLAYER_NAME_MAX];
 extern MessageListClass Messages;
+#ifdef NETWORKING
 extern IPXAddressClass MessageAddress;
+#endif
 extern char LastMessage[MAX_MESSAGE_LENGTH];
 extern int MPlayerBlitz;
 extern int MPlayerObiWan;
@@ -338,7 +340,9 @@ extern int TrapCheckHeap;
 /*
 ** Network (IPX) globals
 */
+#ifdef NETWORKING
 extern IPXManagerClass Ipx;
+#endif
 extern bool NetMaster;
 extern bool NetStealth;
 extern bool NetProtect;
@@ -346,7 +350,9 @@ extern bool NetOpen;
 extern char MPlayerGameName[MPLAYER_NAME_MAX];
 extern GlobalPacketType GPacket;
 extern int GPacketlen;
+#ifdef NETWORKING
 extern IPXAddressClass GAddress;
+#endif
 extern unsigned short GProductID;
 extern char* MetaPacket;
 extern int MetaSize;
@@ -430,6 +436,9 @@ extern TheaterType LastTheater;
 
 extern bool ShareAllyVisibility;
 
-void pause(const char*, ...);
+void DS_Pause(const char*, ...);
+
+// OmniBlade - Moves from tcpip.cpp as part of networking cleanup.
+extern bool Server; // Is this player acting as client or server
 
 #endif

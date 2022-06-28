@@ -115,9 +115,7 @@ endif()
 set(COMMONR_SRC
     gbuffer.cpp
     interpal.cpp
-    ipxaddr.cpp
     soundio_null.cpp
-    tcpip_null.cpp
     video_null.cpp
     wwkeyboard.cpp
     wwmouse.cpp
@@ -126,9 +124,6 @@ set(COMMONR_SRC
 set(COMMONV_SRC
     gbuffer.cpp
     interpal.cpp
-    ipxaddr.cpp
-    tcpip.cpp
-    tcpip_null.cpp
     unvqbuff.cpp
     vqaconfig.cpp
     vqadrawer.cpp
@@ -136,8 +131,6 @@ set(COMMONV_SRC
     vqapalette.cpp
     vqatask.cpp
     vqaver.cpp
-    wsproto.cpp
-    wspudp.cpp
     wwkeyboard.cpp
     wwmouse.cpp
 )
@@ -177,6 +170,14 @@ endif()
 
 if(DSOUND OR DDRAW)
     list(APPEND VANILLA_LIBS dxguid)
+endif()
+
+if(NETWORKING)
+    list(APPEND COMMONV_SRC
+        ipxaddr.cpp
+        wsproto.cpp
+        wspudp.cpp
+    )
 endif()
 
 file(GLOB_RECURSE COMMON_HEADERS "*.h")
