@@ -111,11 +111,17 @@ public:
     };
     unsigned char* Control_Map(void)
     {
-        return ((unsigned char*)this + ColorMap);
+        char *t = (char *)this;
+        int32_t color_map;
+        memcpy(&color_map, t + offsetof(IconsetClass, ColorMap), sizeof(int32_t));
+        return ((unsigned char*)this + color_map);
     };
     unsigned char const* Control_Map(void) const
     {
-        return ((unsigned char const*)this + ColorMap);
+        char *t = (char *)this;
+        int32_t color_map;
+        memcpy(&color_map, t + offsetof(IconsetClass, ColorMap), sizeof(int32_t));
+        return ((unsigned char const*)this + color_map);
     };
     int Icon_Count(void) const
     {
