@@ -67,7 +67,12 @@
  * HISTORY:                                                                *
  *    03/20/1995 IML : Created.                                            *
  *=========================================================================*/
-int LCW_Uncompress(void const* source, void* dest, unsigned length)
+#ifdef _NDS
+int __attribute__((optimize("Ofast"))) __attribute__((hot)) __attribute__((target("arm")))
+#else
+int
+#endif
+LCW_Uncompress(void const* source, void* dest, unsigned length)
 {
     unsigned char *source_ptr, *dest_ptr, *copy_ptr, *dest_end, op_code;
     unsigned count;

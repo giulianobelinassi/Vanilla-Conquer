@@ -18,6 +18,7 @@
 
 extern "C" {
 void memcpy32(void *dst, const void *src, unsigned int wdcount);
+void rmemcpy(void *dst, const void *src, size_t n);
 }
 
 // This function is optimized for the Nintendo DS.  Huge performance increase
@@ -71,13 +72,7 @@ Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x
         } else {
             while (h-- != 0) {
                 if (dst < src + w) {
-                    int length = w;
-                    edst += length;
-                    esrc += length;
-
-                    while (length-- > 0) {
-                        *--edst = *--esrc;
-                    }
+                    rmemcpy(edst, esrc, w);
                 } else {
                     memcpy32(edst, esrc, w/4);
                 }

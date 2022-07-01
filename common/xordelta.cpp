@@ -17,7 +17,12 @@
 #define XOR_LARGE 16383
 #define XOR_MAX   32767
 
-void Apply_XOR_Delta(void* dst, const void* src)
+#ifdef _NDS
+void __attribute__((optimize("Ofast"))) __attribute__((hot)) __attribute__((target("arm")))
+#else
+void
+#endif
+Apply_XOR_Delta(void* dst, const void* src)
 {
     unsigned char* putp = (unsigned char*)(dst);
     const unsigned char* getp = (const unsigned char*)(src);
