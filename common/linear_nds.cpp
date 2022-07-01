@@ -16,13 +16,16 @@
 #include <nds.h>
 #include <stdio.h>
 
+extern "C" {
+void memcpy32(void *dst, const void *src, unsigned int wdcount);
+}
+
 // This function is optimized for the Nintendo DS.  Huge performance increase
 // when compared with the default from the default one.
 
-int __attribute__((optimize("Ofast"))) __attribute__((hot))
+int __attribute__((optimize("Ofast"))) __attribute__((hot)) __attribute__((target("arm")))
 Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x, int dst_y, int w, int h, int use_key)
 {
-    static int bus = 0;
     GraphicViewPortClass& src_vp = *static_cast<GraphicViewPortClass*>(thisptr);
     GraphicViewPortClass& dst_vp = *static_cast<GraphicViewPortClass*>(dest);
     unsigned char* src = reinterpret_cast<unsigned char*>(src_vp.Get_Offset());
@@ -76,8 +79,7 @@ Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x
                         *--edst = *--esrc;
                     }
                 } else {
-                    dmaCopyWordsAsynch(bus, esrc, edst, w);
-                    bus = (bus + 1) % 4;
+                    memcpy32(edst, esrc, w/4);
                 }
 
                 edst -= dst_pitch;
@@ -102,12 +104,7 @@ Linear_Blit_To_Linear(void* thisptr, void* dest, int src_x, int src_y, int dst_x
 
             if ((uintptr_t)src % 4 == 0 && (uintptr_t)dst % 4 == 0) {
                 while (h-- != 0) {
-                    bus = (bus + 1) % 3;
-
-                    /* Flush the cache here, else we get artifacts on the
-                       screen.  It only happens on real hardware.*/
-                    DC_FlushRange(src, w);
-                    dmaCopyWordsAsynch(bus, src, dst, w);
+                    memcpy32(dst, src, w/4);
                     dst += dst_pitch;
                     src += src_pitch;
                 }
