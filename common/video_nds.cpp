@@ -70,16 +70,16 @@ public:
     void Init()
     {
 
-        // Allocate 128Kb for the mouse sprites.
-        vramSetBankD(VRAM_D_SUB_SPRITE);
-        oamInit(&oamSub, SpriteMapping_1D_256, false);
+        // Allocate 16Kb for the mouse sprites.
+        vramSetBankG(VRAM_G_MAIN_SPRITE_0x06400000);
+        oamInit(&oamMain, SpriteMapping_1D_256, false);
 
-        Surface = oamAllocateGfx(&oamSub, SpriteSize_32x32, SpriteColorFormat_256Color);
+        Surface = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
 
         X = 160;
         Y = 100;
 
-        oamSet(&oamSub,
+        oamSet(&oamMain,
                0,
                X,
                Y,
@@ -97,12 +97,12 @@ public:
 
         // Disable sprite scaling and rotating, we won't need it and we require
         // it to be disabled to hide the sprite.
-        oamSub.oamMemory->isRotateScale = false;
+        oamMain.oamMemory->isRotateScale = false;
     }
 
     inline void Set_Cursor_Palette(const u16* palette)
     {
-        dmaCopy(palette, SPRITE_PALETTE_SUB, 2 * 256);
+        dmaCopy(palette, SPRITE_PALETTE, 2 * 256);
     }
 
     inline void Set_Video_Cursor(void* cursor, int w, int h, int hotx, int hoty)
@@ -155,11 +155,11 @@ public:
         const int y_scaled = ((Y - HotY) * 192) / 200;
 
         // Hide or show the cursor accordingly.
-        oamSub.oamMemory->isHidden = Get_Mouse_State();
+        oamMain.oamMemory->isHidden = Get_Mouse_State();
 
         // Update cursor sprite position
-        oamSetXY(&oamSub, 0, x_scaled, y_scaled);
-        oamUpdate(&oamSub);
+        oamSetXY(&oamMain, 0, x_scaled, y_scaled);
+        oamUpdate(&oamMain);
     }
 
     inline void VBlank_Mouse()
@@ -264,11 +264,11 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 
     // Allocate 128Kb for the console on the upper screen.  It is a bit
     // overkill, but we got plenty of VRAM so far so it is OK.
-    vramSetBankA(VRAM_A_MAIN_BG_0x06000000);
-    videoSetMode(MODE_0_2D);
+    vramSetBankC(VRAM_C_SUB_BG_0x06200000);
+    videoSetModeSub(MODE_0_2D);
 
     // Initialize the console on the top screen.
-    consoleInit(&cs0, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, true, true);
+    consoleInit(&cs0, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, false, true);
 
     // We update the mouse position on VBlank interrupts, so if the game drop
     // frames the cursor update doesn't lag, improving gameplay.
@@ -286,28 +286,31 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 
     // Allocate 128kb of VRAM for the background that will hold the visible surface.
     // The backgroung is 512x256, which is 128Kb, a full memory bank.
-    vramSetBankC(VRAM_C_SUB_BG);
+    vramSetBankA(VRAM_A_MAIN_BG_0x06000000);
 
     // Put DS into 2D mode with extended background scaling/rotation support. This
     // is necessary so we can downscale the game to fit into the DS low resolution
     // screen.
-    videoSetModeSub(MODE_3_2D | DISPLAY_BG3_ACTIVE);
-    bg3 = bgInitSub(3, BgType_Bmp8, BgSize_B8_512x256, 0, 0);
+    videoSetMode(MODE_3_2D | DISPLAY_BG3_ACTIVE);
+    bg3 = bgInit(3, BgType_Bmp8, BgSize_B8_512x256, 0, 0);
 
     // Set downscaling 320x200 => 256x192
-    REG_BG3CNT_SUB = BG_BMP8_512x256;  // BG3 Control register, 8 bits
-    REG_BG3PA_SUB = (320 * 256) / 256; //1 << 8;
-    REG_BG3PB_SUB = 0;                 // BG SCALING X
-    REG_BG3PC_SUB = 0;                 // BG SCALING Y
-    REG_BG3PD_SUB = (200 * 256) / 192; // << 8;
-    REG_BG3X_SUB = 0;
-    REG_BG3Y_SUB = 0;
+    REG_BG3CNT = BG_BMP8_512x256;  // BG3 Control register, 8 bits
+    REG_BG3PA = (320 * 256) / 256; //1 << 8;
+    REG_BG3PB = 0;                 // BG SCALING X
+    REG_BG3PC = 0;                 // BG SCALING Y
+    REG_BG3PD = (200 * 256) / 192; // << 8;
+    REG_BG3X = 0;
+    REG_BG3Y = 0;
 
     bgUpdate();
 
     // Initialize the Hardware cursor, which is basically a spite that is
     // displayed on top of the background.
     HWCursor.Init();
+
+    // Swap the LCD screen so that the main 2D engine is on the bottom screen.
+    lcdSwap();
 
     if (w != 320 || h != 200 || bits_per_pixel != 8)
         return false;
@@ -414,10 +417,10 @@ void Set_DD_Palette(void* palette)
         g = (unsigned char)rcolors[i * 3 + 1] << 2;
         b = (unsigned char)rcolors[i * 3 + 2] << 2;
 
-        BG_PALETTE_SUB[i] = RGB8(r, g, b);
+        BG_PALETTE[i] = RGB8(r, g, b);
     }
 
-    HWCursor.Set_Cursor_Palette(BG_PALETTE_SUB);
+    HWCursor.Set_Cursor_Palette(BG_PALETTE);
 }
 
 void Wait_Blit(void)
@@ -489,15 +492,14 @@ public:
             // things there. The background is a 512x512 surface, but
             // only 512x200 pixels are used.
 
-            // Actually, we should allocate different regions of memory for
-            // the hidbuf, but it seems to be unused so alias with the
-            // seenbuf so at least the game doens't crash if it is touched.
-            surface = (char*)bgGetGfxPtr(bg3);
-            Pitch = 512;
-
             if (flags & GBC_VISIBLE) {
+                Pitch = 512;
+                surface = (char*)bgGetGfxPtr(bg3);
                 windowSurface = surface;
                 frontSurface = this;
+            } else {
+                //surface = (char*)malloc(w * h);
+                //Pitch = 320;
             }
         } else {
             swiWaitForVBlank();
