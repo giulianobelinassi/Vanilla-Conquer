@@ -570,10 +570,33 @@ private:
     GBC_Enum flags;
 };
 
-void Video_Render_Frame()
+// Blits the argument page to the front buffer.  This function is optimized to
+// use the DMA, which should be faster on larger copies.
+void DS_Blit_Display(GraphicViewPortClass& HidPage)
 {
-    if (frontSurface) {
-        frontSurface->RenderSurface();
+    const unsigned char* src = (const unsigned char*) HidPage.Get_Offset();
+    unsigned char* dst = (unsigned char *) frontSurface->GetData();
+
+    int dst_pitch = frontSurface->GetPitch();
+    int h = HidPage.Get_Height();
+    int w = HidPage.Get_Width();
+
+    DC_FlushRange(src, w*h);
+
+    while (h > 0) {
+        dmaCopyWordsAsynch(0, src, dst, w);
+        dst += dst_pitch;
+        src += w;
+        dmaCopyWordsAsynch(1, src, dst, w);
+        dst += dst_pitch;
+        src += w;
+        dmaCopyWordsAsynch(2, src, dst, w);
+        dst += dst_pitch;
+        src += w;
+        dmaCopyWordsAsynch(3, src, dst, w);
+        dst += dst_pitch;
+        src += w;
+        h -= 4;
     }
 }
 
