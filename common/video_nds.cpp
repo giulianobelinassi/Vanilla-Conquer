@@ -570,10 +570,49 @@ private:
     GBC_Enum flags;
 };
 
+size_t Get_Free_RAM()
+{
+  size_t s0, s1;
+  void* p;
+
+  s0 = ~(size_t)0 ^ (~(size_t)0 >> 1);
+
+  while (s0 && (p = malloc(s0)) == NULL)
+    s0 >>= 1;
+
+  if (p) {
+    free(p);
+    p = NULL;
+  }
+
+  s1 = s0 >> 1;
+
+  while (s1)
+  {
+    if ((p = malloc(s0 + s1)) != NULL)
+    {
+      s0 += s1;
+      free(p);
+      p = NULL;
+    }
+    s1 >>= 1;
+  }
+
+  while (s0 && (p = malloc(s0)) == NULL)
+    s0 ^= s0 & -s0;
+
+  if (p)
+    free(p);
+  return s0;
+}
+
 // Blits the argument page to the front buffer.  This function is optimized to
 // use the DMA, which should be faster on larger copies.
 void DS_Blit_Display(GraphicViewPortClass& HidPage)
 {
+    //size_t ram_free = Get_Free_RAM();
+    //printf("Free RAM: %d\n", ram_free);
+
     const unsigned char* src = (const unsigned char*) HidPage.Get_Offset();
     unsigned char* dst = (unsigned char *) frontSurface->GetData();
 
