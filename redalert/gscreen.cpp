@@ -421,15 +421,31 @@ void ModeX_Blit(GraphicBufferClass* source);
 
 void DS_Blit_Display(GraphicViewPortClass& HidPage);
 
+#define SHOW_FPS
+
 void GScreenClass::Blit_Display(void)
 {
     BStart(BENCH_BLIT_DISPLAY);
+#ifdef SHOW_FPS
+    static long long last;
+    long long now = WinTimerClass::Now();
+    long long delta = (now - last);
+    char textbuf[16];
+    last = now;
+
+#endif
 #ifndef _NDS
     WWMouse->Draw_Mouse(&HidPage);
     HidPage.Blit(SeenBuff, 0, 0, 0, 0, HidPage.Get_Width(), HidPage.Get_Height(), false);
     WWMouse->Erase_Mouse(&HidPage, false);
 #else
     DS_Blit_Display(HidPage);
+#endif
+#ifdef SHOW_FPS
+    if (delta != 0) {
+      snprintf(textbuf, 16, "%4llu", 1000/delta);
+      SeenPage.Print(textbuf, 12, HidPage.Get_Height() - 20, GREEN, BLACK);
+    }
 #endif
     BEnd(BENCH_BLIT_DISPLAY);
 }
