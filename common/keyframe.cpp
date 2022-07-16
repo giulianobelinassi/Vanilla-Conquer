@@ -70,6 +70,8 @@ typedef struct
 #endif
 #define UNCOMPRESS_MAGIC_NUMBER       56789
 
+bool UseOldShapeDraw = false;
+
 static unsigned short CurrentUncompressMagicNum = UNCOMPRESS_MAGIC_NUMBER;
 static int BigShapeBufferLength = INITIAL_BIG_SHAPE_BUFFER_SIZE;
 static int TheaterShapeBufferLength = THEATER_BIG_SHAPE_BUFFER_SIZE;

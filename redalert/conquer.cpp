@@ -130,8 +130,6 @@ static void Message_Input(KeyNumType& input);
 void Color_Cycle(void);
 bool Map_Edit_Loop(void);
 
-bool UseOldShapeDraw = false;
-
 #ifdef CHEAT_KEYS
 void Dump_Heap_Pointers(void);
 void Error_In_Heap_Pointers(char* string);
