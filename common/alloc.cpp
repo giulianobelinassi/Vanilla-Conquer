@@ -91,6 +91,7 @@ extern void (*Memory_Error_Exit)(char* string) = NULL;
 void* Alloc(size_t bytes_to_alloc, MemoryFlagType flags)
 {
     void* mem_ptr;
+    printf("Trying to alloc %ld\n", bytes_to_alloc);
 
 #ifdef MEM_CHECK
     bytes_to_alloc += sizeof(uintptr_t) * 8;

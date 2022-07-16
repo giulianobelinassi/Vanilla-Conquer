@@ -195,15 +195,15 @@ bool Init_Game(int, char*[])
             new MFCD("LOCAL.MIX"); // Cached.
             MFCD::Cache("LOCAL.MIX");
         }
-        CCDebugString("C&C95 - About to register UPDATE.MIX\n");
-        new MFCD("UPDATE.MIX"); // Cached.
-        new MFCD("UPDATA.MIX"); // Cached.
-        CCDebugString("C&C95 - About to register UPDATEC.MIX\n");
-        new MFCD("UPDATEC.MIX"); // Cached.
-        MFCD::Cache("UPDATEC.MIX");
+        //CCDebugString("C&C95 - About to register UPDATE.MIX\n");
+        //new MFCD("UPDATE.MIX"); // Cached.
+        //new MFCD("UPDATA.MIX"); // Cached.
+        //CCDebugString("C&C95 - About to register UPDATEC.MIX\n");
+        //new MFCD("UPDATEC.MIX"); // Cached.
+        //MFCD::Cache("UPDATEC.MIX");
 #ifdef JAPANESE
-        CCDebugString("C&C95 - About to register LANGUAGE.MIX\n");
-        new MFCD("LANGUAGE.MIX");
+        //CCDebugString("C&C95 - About to register LANGUAGE.MIX\n");
+        //new MFCD("LANGUAGE.MIX");
 #endif // JAPANESE
 
         RequiredCD = temp;
@@ -509,13 +509,13 @@ bool Init_Game(int, char*[])
         **	Cache the main game data. This operation can take a very long time.
         */
         MFCD::Cache("CONQUER.MIX");
-        if (SampleType != 0 && !Debug_Quiet) {
-            MFCD::Cache("SOUNDS.MIX");
-            if (Special.IsJuvenile) {
-                new MFCD("ZOUNDS.MIX"); // Cached.
-                MFCD::Cache("ZOUNDS.MIX");
-            }
-        }
+   //     if (SampleType != 0 && !Debug_Quiet) {
+   //         MFCD::Cache("SOUNDS.MIX");
+   //         if (Special.IsJuvenile) {
+   //             new MFCD("ZOUNDS.MIX"); // Cached.
+   //             MFCD::Cache("ZOUNDS.MIX");
+   //         }
+   //     }
     }
     Call_Back();
 

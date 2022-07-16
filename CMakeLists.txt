@@ -83,9 +83,9 @@ if(NOT MSVC)
     elseif(NDS)
         # -g is useless in DS, as there is no debugger capable of parsing ELF
         # objects.
-        set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g3")
+        set(CMAKE_CXX_FLAGS_DEBUG "-Os")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O2 -fsanitize=undefined")
+        set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O2 -fno-tree-vectorize")
     endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -Wwrite-strings -Werror=write-strings -fcheck-new -fsigned-char -fdata-sections -ffunction-sections -DNOMINMAX")

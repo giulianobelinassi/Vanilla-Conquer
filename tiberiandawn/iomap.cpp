@@ -85,7 +85,7 @@
 bool CellClass::Should_Save(void) const
 {
     return ((Smudge != SMUDGE_NONE) || (TType != TEMPLATE_NONE) || (Overlay != OVERLAY_NONE) || IsMapped || IsVisible
-            || IsMappedByPlayerMask || IsVisibleByPlayerMask || IsTrigger || Flag.Composite || OccupierPtr
+            || /*IsMappedByPlayerMask || IsVisibleByPlayerMask ||*/ IsTrigger || Flag.Composite || OccupierPtr
             || Overlapper[0] || Overlapper[1] || Overlapper[2]);
 }
 

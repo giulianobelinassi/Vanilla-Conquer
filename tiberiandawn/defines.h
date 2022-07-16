@@ -34,6 +34,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#define USE_WESTWOOD_ORIGINAL
+
 #include "common/bitfields.h"
 
 /**********************************************************************
@@ -241,7 +243,11 @@ typedef enum DiffType : unsigned char
 **	changed, be sure to update the makefile and rebuild all of the shape
 **	data files.
 */
-#define SHAPE_BUFFER_SIZE 131072L
+#ifdef USE_WESTWOOD_ORIGINAL
+# define SHAPE_BUFFER_SIZE 40000L
+#else
+# define SHAPE_BUFFER_SIZE 131072L
+#endif
 
 // Use this to allow keep track of versions as they affect saved games.
 #define VERSION_NUMBER 1
@@ -1960,22 +1966,59 @@ inline TextPrintType operator~(TextPrintType a)
 **	maximums never exceed the maximum value for the "ID" element in the
 **	object class.
 */
-#define AIRCRAFT_MAX      100 // Lasts for minutes.
-#define ANIM_MAX          200 // Lasts only a few seconds.
-#define BUILDING_MAX      500 // Lasts for hours.
-#define BULLET_MAX        50  // Lasts several seconds.
-#define FACTORY_MAX       32  // Lasts a few minutes.
-#define HOUSE_MAX         12  // Lasts entire scenario.
-#define INFANTRY_MAX      500 // Lasts for minutes.
-#define OVERLAY_MAX       1   // Very transitory.
-#define REINFORCEMENT_MAX 50  // Maximum number of reinforcements.
-#define SMUDGE_MAX        1   // Very transitory.
-#define TEAM_MAX          60  // Lasts forever.
-#define TEMPLATE_MAX      1   // Very transitory.
-#define TERRAIN_MAX       500 // Lasts for hours or eternity.
-#define TRIGGER_MAX       80  // Lasts forever.
-#define UNIT_MAX          500 // Lasts for minutes.
-#define TEAMTYPE_MAX      60  // Lasts forever.
+#ifdef USE_WESTWOOD_ORIGINAL
+//# define AIRCRAFT_MAX      30 // Lasts for minutes.
+//# define ANIM_MAX          50 // Lasts only a few seconds.
+//# define BUILDING_MAX      300 // Lasts for hours.
+//# define BULLET_MAX        40  // Lasts several seconds.
+//# define FACTORY_MAX       20  // Lasts a few minutes.
+//# define HOUSE_MAX         12  // Lasts entire scenario.
+//# define INFANTRY_MAX      300 // Lasts for minutes.
+//# define OVERLAY_MAX       1   // Very transitory.
+//# define REINFORCEMENT_MAX 50  // Maximum number of reinforcements.
+//# define SMUDGE_MAX        1   // Very transitory.
+//# define TEAM_MAX          60  // Lasts forever.
+//# define TEMPLATE_MAX      1   // Very transitory.
+//# define TERRAIN_MAX       300 // Lasts for hours or eternity.
+//# define TRIGGER_MAX       40  // Lasts forever.
+//# define UNIT_MAX          300 // Lasts for minutes.
+//# define TEAMTYPE_MAX      40  // Lasts forever.
+
+# define AIRCRAFT_MAX      30 // Lasts for minutes.
+# define ANIM_MAX          50 // Lasts only a few seconds.
+# define BUILDING_MAX      50 // Lasts for hours.
+# define BULLET_MAX        40  // Lasts several seconds.
+# define FACTORY_MAX       10  // Lasts a few minutes.
+# define HOUSE_MAX         12  // Lasts entire scenario.
+# define INFANTRY_MAX      100 // Lasts for minutes.
+# define OVERLAY_MAX       1   // Very transitory.
+# define REINFORCEMENT_MAX 15  // Maximum number of reinforcements.
+# define SMUDGE_MAX        1   // Very transitory.
+# define TEAM_MAX          40  // Lasts forever.
+# define TEMPLATE_MAX      1   // Very transitory.
+# define TERRAIN_MAX       100 // Lasts for hours or eternity.
+# define TRIGGER_MAX       10  // Lasts forever.
+# define UNIT_MAX          100 // Lasts for minutes.
+# define TEAMTYPE_MAX      20  // Lasts forever.
+
+#else
+# define AIRCRAFT_MAX      100 // Lasts for minutes.
+# define ANIM_MAX          200 // Lasts only a few seconds.
+# define BUILDING_MAX      500 // Lasts for hours.
+# define BULLET_MAX        50  // Lasts several seconds.
+# define FACTORY_MAX       32  // Lasts a few minutes.
+# define HOUSE_MAX         12  // Lasts entire scenario.
+# define INFANTRY_MAX      500 // Lasts for minutes.
+# define OVERLAY_MAX       1   // Very transitory.
+# define REINFORCEMENT_MAX 50  // Maximum number of reinforcements.
+# define SMUDGE_MAX        1   // Very transitory.
+# define TEAM_MAX          60  // Lasts forever.
+# define TEMPLATE_MAX      1   // Very transitory.
+# define TERRAIN_MAX       500 // Lasts for hours or eternity.
+# define TRIGGER_MAX       80  // Lasts forever.
+# define UNIT_MAX          500 // Lasts for minutes.
+# define TEAMTYPE_MAX      60  // Lasts forever.
+#endif
 
 // Save filename description.
 #define DESCRIP_MAX 44 // 40 chars + CR + LF + CTRL-Z + NULL
@@ -2712,7 +2755,11 @@ typedef enum ModemGameType : unsigned char
 /****************************************************************************
 **	This is the max number of events supported on one frame.
 */
+#ifdef USE_WESTWOOD_ORIGINAL
+#define MAX_EVENTS 64
+#else
 #define MAX_EVENTS 256
+#endif
 
 /****************************************************************************
 **	These are the various commands sent over the network's Global Channel.

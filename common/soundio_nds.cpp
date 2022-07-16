@@ -92,10 +92,11 @@ public:
     inline int Set_File_Stream(const char* filename, unsigned char volume)
     {
         int bytes;
+        Volume = 0;
 
         // If volume is too low then disable music to save resources
         if (Volume < 2) {
-            printf("!! Volume too low!\n");
+            //printf("!! Volume too low!\n");
             return INVALID_AUDIO_HANDLE;
         }
 

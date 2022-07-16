@@ -200,8 +200,8 @@ void Check_Use_Compressed_Shapes()
 
 #ifdef _NDS
     // mrparrot 03/10/2021: Nintendo DS doesn't have enough memory to run uncompressed shapes.
-    UseBigShapeBuffer = true;
-    OriginalUseBigShapeBuffer = true;
+    UseBigShapeBuffer = false;
+    OriginalUseBigShapeBuffer = false;
 #else
     // BigShapeBuffer is broken in this branch
     UseBigShapeBuffer = true;

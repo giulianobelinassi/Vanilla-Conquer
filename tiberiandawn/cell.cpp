@@ -2576,12 +2576,12 @@ ObjectClass* CellClass::Cell_Occupier(void) const
  *=============================================================================================*/
 void CellClass::Set_Mapped(HousesType house, bool set)
 {
-    int shift = (int)house;
-    if (set) {
-        IsMappedByPlayerMask |= (1 << shift);
-    } else {
-        IsMappedByPlayerMask &= ~(1 << shift);
-    }
+//    int shift = (int)house;
+//    if (set) {
+//        IsMappedByPlayerMask |= (1 << shift);
+//    } else {
+//        IsMappedByPlayerMask &= ~(1 << shift);
+//    }
 }
 
 /***********************************************************************************************
@@ -2610,8 +2610,9 @@ void CellClass::Set_Mapped(HouseClass* player, bool set)
  *=============================================================================================*/
 bool CellClass::Is_Mapped(HousesType house) const
 {
-    int shift = (int)house;
-    return (IsMappedByPlayerMask & (1 << shift)) ? true : false;
+//    int shift = (int)house;
+//    return (IsMappedByPlayerMask & (1 << shift)) ? true : false;
+return true;
 }
 
 /***********************************************************************************************
@@ -2638,12 +2639,12 @@ bool CellClass::Is_Mapped(HouseClass* player) const
  *=============================================================================================*/
 void CellClass::Set_Visible(HousesType house, bool set)
 {
-    int shift = (int)house;
-    if (set) {
-        IsVisibleByPlayerMask |= (1 << shift);
-    } else {
-        IsVisibleByPlayerMask &= ~(1 << shift);
-    }
+//    int shift = (int)house;
+//    if (set) {
+//        IsVisibleByPlayerMask |= (1 << shift);
+//    } else {
+//        IsVisibleByPlayerMask &= ~(1 << shift);
+//    }
 }
 
 /***********************************************************************************************
@@ -2672,8 +2673,9 @@ void CellClass::Set_Visible(HouseClass* player, bool set)
  *=============================================================================================*/
 bool CellClass::Is_Visible(HousesType house) const
 {
-    int shift = (int)house;
-    return (IsVisibleByPlayerMask & (1 << shift)) ? true : false;
+//    int shift = (int)house;
+//    return (IsVisibleByPlayerMask & (1 << shift)) ? true : false;
+return true;
 }
 
 /***********************************************************************************************

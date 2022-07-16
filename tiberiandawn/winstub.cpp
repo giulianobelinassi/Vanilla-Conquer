@@ -436,11 +436,16 @@ bool Any_Locked()
  * HISTORY:                                                                                    *
  *    5/22/96 3:57PM ST : Created                                                              *
  *=============================================================================================*/
+
+size_t Get_Free_RAM();
+
 void Memory_Error_Handler(void)
 {
 
 #ifdef _NDS
+    size_t ram = Get_Free_RAM();
     DBG_LOG("Error - out of memory");
+    DBG_LOG("Available: %ld", ram);
     swiWaitForVBlank();
     while (1)
         ;
