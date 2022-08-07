@@ -38,6 +38,8 @@ const char* basename(const char* path)
 }
 }
 
+void Set_Video_Mode(int, int, int);
+
 /* Nintendo DS require its filesystem structures to be explicitely initialized. */
 void DS_Filesystem_Init()
 {
@@ -47,6 +49,7 @@ void DS_Filesystem_Init()
         return;
 
     if (!fatInitDefault()) {
+        Set_Video_Mode(320, 200, 8);
         DBG_LOG("FATAL ERROR: Unable to initialize file system");
         swiWaitForVBlank();
         while (1)

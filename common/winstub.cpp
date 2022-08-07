@@ -21,8 +21,10 @@
 
 #include "iff.h"
 #include "gbuffer.h"
-#include "filepcx.h"
 #include "debugstring.h"
+#include "filepcx.h"
+
+GraphicBufferClass* Read_PCX_File (const char* name, char* palette,void *buff, int size);
 
 /***********************************************************************************************
  * Load_Title_Screen -- loads the title screen into the given video buffer                     *

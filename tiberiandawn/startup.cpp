@@ -205,19 +205,6 @@ int main(int argc, char** argv)
     UtfArgs args(argc, argv);
     CCDebugString("C&C95 - Starting up.\n");
 
-    if (Ram_Free(MEM_NORMAL) < 5000000) {
-#ifdef GERMAN
-        printf("Zuwenig Hauptspeicher verf?gbar.\n");
-#else
-#ifdef FRENCH
-        printf("M‚moire vive (RAM) insuffisante.\n");
-#else
-        printf("Insufficient RAM available.\n");
-#endif
-#endif
-        return (EXIT_FAILURE);
-    }
-
 #ifdef JAPANESE
     ForceEnglish = false;
 #endif

@@ -68,6 +68,7 @@
 #endif
 
 #include <sys/stat.h>
+#include <endianness.h>
 
 /***********************************************************************************************
  * RawFileClass::Error -- Handles displaying a file error message.                             *
@@ -438,6 +439,41 @@ void RawFileClass::Close(void)
  * HISTORY:                                                                                    *
  *   10/18/1994 JLB : Created.                                                                 *
  *=============================================================================================*/
+
+static size_t fread16(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+  size_t num_shorts = nmemb/2;
+  size_t remaining = nmemb%2;
+  size_t bytes_read = 0;
+
+  unsigned short val;
+  unsigned short *ptr16 = (unsigned short *)ptr;
+
+  bool unaligned = ((uintptr_t) ptr % 2 == 0);
+
+  if (unaligned)
+    printf("ptr is unaligned\n");
+
+  while (num_shorts-- > 0) {
+    bytes_read += fread(&val, 1, 2, stream);
+    if (unaligned)
+      *ptr16++ = bswap16(val);
+    else
+      *ptr16++ = val;
+  }
+
+  val = 0;
+  if (remaining > 0) {
+    bytes_read += fread(&val, 1, 2, stream);
+    if (unaligned)
+      *ptr16++ = bswap16(val);
+    else
+      *ptr16++ = val;
+  }
+
+  return bytes_read;
+}
+
 int RawFileClass::Read(void* buffer, int size)
 {
     int bytesread = 0;  // Running count of the number of bytes read into the buffer.

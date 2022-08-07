@@ -47,6 +47,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include <nds.h>
+#include "expansionpak_nds.h"
 #endif
 
 #if defined(__unix__) || defined(__unix)
@@ -101,15 +102,49 @@ extern void (*Memory_Error_Exit)(char* string) = NULL;
  *   03/09/1995 JLB : Fixed                                                *
  *   09/28/1995 ST  : Simplified for win95                                                                      *
  *=========================================================================*/
+
+#ifdef _NDS
+bool ExpansionMemoryInstalled;
+size_t StackTop = 0;
+
+#endif
+
 void* Alloc(size_t bytes_to_alloc, MemoryFlagType flags)
 {
+
     void* mem_ptr;
+
+#ifdef _NDS
+    static bool expansion_initialized = false;
+    if (flags & MEM_EXPANSION) {
+      if (!expansion_initialized) {
+        expansion_initialized = true;
+        ExpansionMemoryInstalled = ram_init(DETECT_RAM);
+      }
+
+      if (ExpansionMemoryInstalled) {
+        /* 4 bytes aligned.  */
+        mem_ptr = (void*) ((((uintptr_t)ram_unlock() + 3UL) & ~3UL) + StackTop);
+        StackTop += (bytes_to_alloc + 3UL) & ~3UL;
+
+        printf("MemPtr: %lx\n", (uintptr_t) mem_ptr);
+        printf("StackTop: %d\n", StackTop);
+
+        memset(mem_ptr, 0, bytes_to_alloc);
+
+        return mem_ptr;
+      } else {
+        return NULL;
+      }
+    }
+#endif
 
 #ifdef MEM_CHECK
     bytes_to_alloc += sizeof(uintptr_t) * 8;
 #endif // MEM_CHECK
 
     mem_ptr = malloc(bytes_to_alloc);
+
     if (mem_ptr == NULL) {
         DBG_LOG("Unable to allocate memory\n");
     }

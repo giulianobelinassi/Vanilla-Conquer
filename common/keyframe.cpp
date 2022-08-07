@@ -289,7 +289,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
                 eps = 600 * 1024;
             } else {
                 /* Game is RA.  It can run with less free memory.  */
-                eps = 300 * 1024;
+                eps = 400 * 1024;
             }
 
             size_t ram_free = Ram_Free(MEM_NORMAL);

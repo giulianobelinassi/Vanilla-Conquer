@@ -29,6 +29,7 @@
 #include "shastraw.h"
 #include "wwstd.h"
 #include "rndstraw.h"
+#include "memflag.h"
 
 #ifndef _WIN32
 #include <libgen.h> // For basename()
@@ -118,6 +119,15 @@ private:
     **	flag will be true.
     */
     unsigned IsAllocated : 1;
+
+#ifdef _NDS
+
+    /*
+    **	If the cached memory block was allocated on the Expansion Pak then
+    **	flag will be true.
+    */
+    unsigned ExpansionMemory : 1;
+#endif
 
 /*
     **	This is the initial file header. It tells how many files are embedded
@@ -212,7 +222,10 @@ template <class T, class TCRC> MixFileClass<T, TCRC>::~MixFileClass(void)
         free((char*)Filename);
     }
     if (Data != NULL && IsAllocated) {
-        delete[] static_cast<char*>(Data);
+#ifdef _NDS
+      if (!ExpansionMemory)
+#endif
+        ::Free(Data);
         IsAllocated = false;
     }
     Data = NULL;
@@ -593,7 +606,15 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
             Data = buffer->Get_Buffer();
         }
     } else {
-        Data = new char[DataSize];
+#ifdef _NDS
+        Data = Alloc(DataSize, MEM_EXPANSION); //new char[DataSize];
+        if (Data == NULL)
+            Data = Alloc(DataSize, MEM_NORMAL);
+        else
+            ExpansionMemory = true;
+#else
+        Data = Alloc(DataSize, MEM_NORMAL);
+#endif
         IsAllocated = true;
     }
 
@@ -625,17 +646,32 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
         file.Bias(0);
         file.Bias(DataStart);
 
+#ifdef _NDS
+//        if (ExpansionMemory)
+//          ram_lock();
+#endif
         /*
         **	Fetch the whole mixfile data in one step. If the number of bytes retrieved
         **	does not equal that requested, then this indicates a serious error.
         */
         int actual = straw->Get(Data, DataSize);
+#ifdef _NDS
+//        if (ExpansionMemory)
+//          ram_unlock();
+#endif
         if (actual != DataSize) {
-            delete[] Data;
+#ifdef _NDS
+            if (!ExpansionMemory)
+#endif
+              ::Free(Data);
+            printf("crc: %lx\n", Calculate_CRC(Data, DataSize));
+            printf("Expected: %d, got %d\n", DataSize, actual);
             Data = NULL;
             file.Error(EIO);
             return (false);
         }
+
+        printf("crc: %lx\n", Calculate_CRC(Data, DataSize));
 
         /*
         **	If there is a digest attached to this mixfile, then read it in and
@@ -648,7 +684,10 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
             sha.Result(digest2);
             fstraw.Get(digest1, sizeof(digest1));
             if (memcmp(digest1, digest2, sizeof(digest1)) != 0) {
-                delete[] Data;
+#ifdef _NDS
+            if (!ExpansionMemory)
+#endif
+                  ::Free(Data);
                 Data = NULL;
                 return (false);
             }
@@ -680,7 +719,10 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
 template <class T, class TCRC> void MixFileClass<T, TCRC>::Free(void)
 {
     if (Data != NULL && IsAllocated) {
-        delete[] Data;
+#ifdef _NDS
+      if (!ExpansionMemory)
+#endif
+        ::Free(Data);
     }
     Data = NULL;
     IsAllocated = false;
