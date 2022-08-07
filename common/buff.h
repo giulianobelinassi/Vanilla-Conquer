@@ -52,6 +52,8 @@ typedef int bool;
 #endif
 #endif
 
+#include "memflag.h"
+
 /*
 **	A general purpose buffer pointer handler object. It holds not only the pointer to the
 **	buffer, but its size as well. By using this class instead of separate pointer and size
@@ -63,7 +65,7 @@ public:
     Buffer(char* ptr, int size = 0);
     Buffer(void* ptr = 0, int size = 0);
     Buffer(void const* ptr, int size = 0);
-    Buffer(int size);
+    Buffer(int size, MemoryFlagType flags = MEM_NORMAL);
     Buffer(Buffer const& buffer);
     ~Buffer(void);
 

@@ -382,7 +382,7 @@ void DisplayClass::Init_Theater(TheaterType theater)
             delete TheaterData;
         }
         TheaterData = new MFCD(fullname);
-        TheaterData->Cache();
+        TheaterData->Cache(TheaterBuffer);
     }
 
 #endif

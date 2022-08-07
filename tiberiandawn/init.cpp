@@ -167,6 +167,14 @@ bool Init_Game(int, char*[])
     CCDebugString("C&C95 - About to call Set_Shape_Buffer\n");
     Set_Shape_Buffer(new unsigned char[SHAPE_BUFFER_SIZE], SHAPE_BUFFER_SIZE);
 
+
+    /*
+    **	Allocate the theater buffer block.
+    */
+    CCDebugString("C&C95 - About to allocate theater buffer\n");
+    TheaterBuffer = new Buffer(THEATER_BUFFER_SIZE, MEM_EXPANSION);
+    assert(TheaterBuffer != NULL);
+
     /*
     **	Bootstrap enough of the system so that the error dialog box can sucessfully
     **	be displayed.
@@ -634,6 +642,14 @@ bool Init_Game(int, char*[])
 void Uninit_Game(void)
 {
     Map.Free_Cells();
+
+    /*
+    **	Deallocate the theater buffer block.
+    */
+    if (TheaterBuffer) {
+        delete TheaterBuffer;
+        TheaterBuffer = NULL;
+    }
 
     delete[] SpeechBuffer;
 

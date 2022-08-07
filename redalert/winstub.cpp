@@ -614,6 +614,14 @@ void Memory_Error_Handler(void)
         Show_Mouse();
     };
     WWMessageBox().Process(TEXT_MEMORY_ERROR, TEXT_ABORT, nullptr, nullptr, false);
+#ifdef _NDS
+    printf("\n"
+           "** This game requires the DSi **"
+           "**            model           **\n"
+           "If you see this message on DSi, then launch it in DSi mode.\n"
+           "\n"
+           "If you see this message in-game, report as a bug.\n");
+#endif
 
     ReadyToQuit = 1;
 

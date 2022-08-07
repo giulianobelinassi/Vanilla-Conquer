@@ -36,6 +36,9 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#ifdef _NDS
+#include <nds.h>
+#endif
 
 /***********************************************************************************************
  * CreditClass::CreditClass -- Default constructor for the credit class object.                *
@@ -91,13 +94,20 @@ void CreditClass::Graphic_Logic(bool forced)
         **	Play a sound effect when the money display changes, but only if a sound
         **	effect was requested.
         */
-        if (IsAudible) {
+        bool is_audible = IsAudible;
+#ifdef _NDS
+        /* FIXME: There is a bug on retail DS which makes the credits sound to
+           glich.  */
+        is_audible = is_audible && isDSiMode();
+#endif
+        if (is_audible) {
             if (IsUp) {
                 Sound_Effect(VOC_UP, VOL_1);
             } else {
                 Sound_Effect(VOC_DOWN, VOL_1);
             }
         }
+
         /*
         **	Display the new current value.
         */

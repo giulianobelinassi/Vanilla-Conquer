@@ -34,6 +34,13 @@
 // Calculate the ceil of division x / y.
 #define CEIL_DIV(x, y) (1 + (((x) - 1) / (y)))
 
+/*  Variable used to busy wait while the ARM9 copy data from an unreachable
+    address to somewhere we can reach.  */
+volatile bool WaitingARM9 = false;
+
+/* Pointer to an region of memory that the ARM9 can write.  */
+unsigned char *SharedArea = NULL;
+
 // Provide an implementation of timerElapsed. Stolen from libnds.
 
 //---------------------------------------------------------------------------------
@@ -72,7 +79,7 @@ enum
     VOLUME_MAX = 255,
     PRIORITY_MIN = 0,
     PRIORITY_MAX = 255,
-    MAX_SAMPLE_TRACKERS = 5,
+    MAX_SAMPLE_TRACKERS = NUM_TRACKERS,
     DECOMP_BUFFER_COUNT = 2,
     BUFFER_CHUNK_SIZE = 4096,
     UNCOMP_BUFFER_SIZE = 2098,
@@ -80,17 +87,6 @@ enum
     INVALID_AUDIO_HANDLE = -1,
     INVALID_FILE_HANDLE = -1,
 };
-
-/*
-** Define the different type of sound compression avaliable to the westwood
-** library.
-*/
-typedef enum
-{
-    SCOMP_NONE = 0,     // No compression -- raw data.
-    SCOMP_WESTWOOD = 1, // Special sliding window delta compression.
-    SCOMP_SOS = 99      // SOS frame compression.
-} SCompressType;
 
 class SoundTracker;
 static inline int __attribute__((pure)) Get_Channel_Index(SoundTracker*);
@@ -225,6 +221,27 @@ public:
         SoundHandle = handle;
         IsMusic = is_music;
 
+        /* If the AUD is at an unreachable address, ask for the ARM9 to copy it
+           to somewhere we can reach.  This should never run on DSi mode.  */
+        if ((u32)sample >= 0x08000000) {
+            int index = Get_Channel_Index();
+
+            const void *src = sample;
+            void *dst = &SharedArea[SHARED_CHUNK_SIZE * index];
+
+            USR2::FifoMemcpyMessage msg;
+            msg.src = src;
+            msg.dst = dst;
+
+            fifoSendDatamsg(FIFO_USER_02, sizeof(msg), (u8*)&msg);
+
+            while (WaitingARM9)
+                ; // Busy wait the ARM9 to answer.
+
+            /* Override unreachable pointer with the one that I can reach.  */
+            sample = dst;
+        }
+
         // Load the AUD header;
         AUDHeaderType raw_header;
         memcpy(&raw_header, sample, sizeof(raw_header));
@@ -261,9 +278,17 @@ public:
             sosinfo.dwUnCompSize = raw_header.Size * (sosinfo.wBitSize / 4);
             sosCODECInitStream(&sosinfo);
         } else if (Compression == SCOMP_WESTWOOD) {
+            if (!isDSiMode()) {
+                /* SCOMP_WESTWOOD on retail DS crashes the system for some
+                   resason.  */
+                Stop_Sample();
+                return 0;
+            }
+
             /* There is a bug in SCOMP_WESTWOOD on DS in which sounds compressed
                by it get wavely loud in some audios.  So we lower their volume
                so that it doesn't bother the user too much.  */
+
             Volume = Volume / 6;
             Bits = 8;
         }
@@ -869,12 +894,19 @@ void user01CommandHandler(u32 command, void* userdata)
 
     case USR1::STOP_SAMPLE_HANDLE:
         Trackers.Stop_Sample_Handle(data);
+        break;
 
     case USR1::STOP_SAMPLE:
         Trackers.Stop_Sample(data);
+        break;
 
     case USR1::SET_MUSIC_VOL:
         Trackers.Set_Music_Vol(data);
+        break;
+
+    case USR1::ARM9_AUDCPY_DONE:
+        WaitingARM9 = false;
+        break;
 
     default:
         break;
@@ -913,6 +945,8 @@ void Process_Queue()
             SCHANNEL_ENABLE | SOUND_VOL(volume) | SOUND_PAN(64) | (format << 29) | (SOUND_REPEAT);
 
         SCHANNEL_REPEAT_POINT(VQA_CHANNEL) = 0;
+    } else if (msg.type == USR1::SET_SHARED_AREA) {
+        SharedArea = (unsigned char *) msg.SetSharedArea.ptr;
     }
 }
 

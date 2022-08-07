@@ -68,6 +68,7 @@
 #endif
 
 #include <sys/stat.h>
+#include <endianness.h>
 
 /***********************************************************************************************
  * RawFileClass::Error -- Handles displaying a file error message.                             *
@@ -438,6 +439,7 @@ void RawFileClass::Close(void)
  * HISTORY:                                                                                    *
  *   10/18/1994 JLB : Created.                                                                 *
  *=============================================================================================*/
+
 int RawFileClass::Read(void* buffer, int size)
 {
     int bytesread = 0;  // Running count of the number of bytes read into the buffer.

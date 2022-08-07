@@ -7,6 +7,24 @@
 // have to stream it from the SD Card.
 #define MUSIC_CHUNK_SIZE 32768
 
+// Chunk size of the shared memory area per tracker.  Must be at least equal
+// to the largest AUD in a *cached* mixfile.
+#define SHARED_CHUNK_SIZE (70 * 1024)
+
+// Number of trackers to use;
+#define NUM_TRACKERS 5
+
+/*
+** Define the different type of sound compression avaliable to the westwood
+** library.
+*/
+typedef enum
+{
+    SCOMP_NONE = 0,     // No compression -- raw data.
+    SCOMP_WESTWOOD = 1, // Special sliding window delta compression.
+    SCOMP_SOS = 99      // SOS frame compression.
+} SCompressType;
+
 // USR1: ARM9 to ARM7
 namespace USR1
 {
@@ -32,6 +50,10 @@ namespace USR1
 
         // Set volume of music.
         SET_MUSIC_VOL = 4 << 20,
+
+        // Confirmation that copy from ARM9 is done.
+        ARM9_AUDCPY_DONE = 5 << 20,
+
     } FifoSoundCommand;
 
     // Define message kinds. Used to distinguish packages one from another.
@@ -42,6 +64,11 @@ namespace USR1
 
         // Sound message comming from VQA Player.
         SOUND_VQA_MESSAGE,
+
+        // Set shared memory area to store stuff comming from regions that
+        // the ARM7 can't reach.
+        SET_SHARED_AREA,
+
     } FifoSoundMessageType;
 
     // Define what can be in a message. Message must have a maximum length of
@@ -71,6 +98,11 @@ namespace USR1
                 u8 volume;
                 u8 bits;
             } SoundVQAChunk;
+
+            struct
+            {
+                void* ptr;
+            } SetSharedArea;
         };
 
     } ALIGN(4) FifoSoundMessage;
@@ -85,6 +117,13 @@ namespace USR2
         // Ask the ARM9 for more music data.
         MUSIC_REQUEST_CHUNK = 1 << 20,
     } SoundMusicChunk;
+
+    // Parameters of a memcpy call.
+    typedef struct FifoMessage
+    {
+        const void *src;
+        void *dst;
+    } ALIGN(4) FifoMemcpyMessage;
 } // namespace USR2
 
 #endif //AUDIO_FIFOCOMMON

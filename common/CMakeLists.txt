@@ -107,7 +107,7 @@ set(COMMON_SRC
 if (WIN32)
     list(APPEND COMMON_SRC file_win.cpp paths_win.cpp wintimer.cpp)
 elseif (NDS)
-    list(APPEND COMMON_SRC fnmatch.cpp file_posix.cpp paths_nds.cpp wintimer_nds.cpp memcpy.s rmemcpy.s memmove.s)
+    list(APPEND COMMON_SRC fnmatch.cpp file_posix.cpp paths_nds.cpp wintimer_nds.cpp expansionpak_nds.cpp memcpy.s rmemcpy.s memmove.s)
 else()
     list(APPEND COMMON_SRC file_posix.cpp paths_posix.cpp wintimer.cpp)
 endif()

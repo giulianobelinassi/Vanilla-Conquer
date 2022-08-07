@@ -7,6 +7,7 @@
 #include <nds/arm9/sound.h>
 #include <nds/fifocommon.h>
 #include <nds/arm9/cache.h>
+#include <nds/system.h>
 #include "audio_fifocommon.h"
 
 /** Sound interface between C&C and the ARM7 chip.
@@ -248,6 +249,38 @@ void user02CommandHandler(u32 command, void* userdata)
     }
 }
 
+// Declare the USR2 mensage parser that will decode the messages from our ARM7
+// chip.
+
+void user02DatamsgHandler(int bytes, void *data)
+{
+  USR2::FifoMemcpyMessage msg;
+  fifoGetDatamsg(FIFO_USER_02, bytes, (u8*)&msg);
+
+  const void *src = msg.src;
+  void *dst = msg.dst;
+  size_t n;
+
+  AUDHeaderType raw_header;
+  memcpy(&raw_header, src, sizeof(raw_header));
+
+  // Infantry dying causes the game to crash for some reason.
+  if (SCompressType(raw_header.Compression) != SCOMP_WESTWOOD) {
+
+      n = raw_header.Size + sizeof(AUDHeaderType);
+      // Align to word.
+      n = (n + 3) & ~3UL;
+
+      /* Perform a memcpy to the address request.  Src may be unaligned. */
+      memcpy(dst, src, n);
+      DC_FlushRange(dst, n);
+  }
+
+
+  /* Send confirmation to ARM7 that we are done.  */
+  fifoSendValue32(FIFO_USER_01, USR1::ARM9_AUDCPY_DONE);
+}
+
 /* --------------------------------------------------------------------
  *      Everything down here is an interface to the game's engine.
  * --------------------------------------------------------------------
@@ -284,14 +317,34 @@ void* Load_Sample(char const* filename)
 // Unused but required by game engine.
 void Free_Sample(void const* sample){};
 
+// Allocate a shared region in case it needs to access stuff that is
+// unreachable to it. (like the ExpansionPak in the GBA slot).
+static unsigned char *SharedArea;
+
 // Initialize audio-related structures.
 bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channels)
 {
     // Initialize Nintendo DS sound system.
     soundEnable();
 
+    // On original NDS we cache the sound effects on an address that the ARM7
+    // can't reach, so we allocate a temporary buffer where we will copy
+    // those sound effects.
+    if (!isDSiMode()) {
+        SharedArea = (unsigned char *) Alloc(SHARED_CHUNK_SIZE * NUM_TRACKERS, MEM_CLEAR);
+    }
+
     // Install ARM7 to ARM9 Queue, used to request music data.
     fifoSetValue32Handler(FIFO_USER_02, user02CommandHandler, 0);
+    fifoSetDatamsgHandler(FIFO_USER_02, user02DatamsgHandler, 0);
+
+    USR1::FifoMessage msg;
+    msg.type = USR1::SET_SHARED_AREA;
+    msg.SetSharedArea.ptr = SharedArea;
+
+    // Asynchronous send sound play command
+    fifoSendDatamsg(FIFO_USER_01, sizeof(msg), (u8*)&msg);
+
 
     // Set Global structures required by game's API.
     SoundType = SFX_ALFX;
@@ -305,6 +358,8 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
 // Unused, but requited by game engine.
 void Sound_End(void)
 {
+    if (SharedArea)
+        ::Free(SharedArea);
 }
 
 // Stop a sample by its handle.

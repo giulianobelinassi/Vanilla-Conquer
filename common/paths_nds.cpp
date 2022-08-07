@@ -21,6 +21,13 @@
 
 #include <limits.h>
 
+#include "xstraw.h"
+#include "pkstraw.h"
+#include "shastraw.h"
+#include "rndstraw.h"
+
+#define MIN(a, b) (((a) > (b)) ? (b) : (a))
+
 /* DS is quasi-posix compliant: it don't provide some functions.  */
 extern "C" {
 
@@ -38,6 +45,8 @@ const char* basename(const char* path)
 }
 }
 
+void Set_Video_Mode(int, int, int);
+
 /* Nintendo DS require its filesystem structures to be explicitely initialized. */
 void DS_Filesystem_Init()
 {
@@ -47,6 +56,7 @@ void DS_Filesystem_Init()
         return;
 
     if (!fatInitDefault()) {
+        Set_Video_Mode(320, 200, 8);
         DBG_LOG("FATAL ERROR: Unable to initialize file system");
         swiWaitForVBlank();
         while (1)
@@ -54,6 +64,35 @@ void DS_Filesystem_Init()
     }
 
     fs_initialized = true;
+}
+
+/* Nintendo DS Expansion Pak requires that writes are 16-bit wide.  This
+   function ensures that the file is cached correctly.  */
+int DS_Cache_File(void *data, int datasize, Straw *straw)
+{
+    if (isDSiMode()) {
+      /* DSi doesn't support the memory expansion pak, so load it directly
+         into the RAM.  */
+      return straw->Get(data, datasize);
+    }
+
+    /* Define a buffer on on-board memory, as it is more flexible.  */
+    unsigned char buf[4096];
+    unsigned char* datab = (unsigned char*) data;
+    int actual;
+    int i;
+
+    while (actual < datasize) {
+      int to_read = MIN(datasize - actual, 4096);
+      i = straw->Get(buf, to_read);
+
+      /* If the number of bytes read isn't multiple of 2, then we align upwards
+         to ensure a 16-bit read.  */
+      memcpy((u16*) &datab[actual], buf, i + (i & 1));
+      actual += i;
+    }
+
+    return actual;
 }
 
 namespace

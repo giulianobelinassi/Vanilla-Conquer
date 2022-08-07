@@ -48,6 +48,7 @@ typedef enum
     MEM_REAL = 0x0004,   // Clear memory before returning.
     MEM_TEMP = 0x0008,   // Clear memory before returning.
     MEM_LOCK = 0x0010,   // Lock the memory that we allocated
+    MEM_EXPANSION = 0x0020, // Allocate memory in some kind of expansion memory.
 } MemoryFlagType;
 
 /*

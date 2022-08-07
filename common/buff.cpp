@@ -100,13 +100,13 @@ Buffer::Buffer(void const* buffer, int size)
  * HISTORY:                                                                                    *
  *   07/29/1996 JLB : Created.                                                                 *
  *=============================================================================================*/
-Buffer::Buffer(int size)
+Buffer::Buffer(int size, MemoryFlagType flags)
     : BufferPtr(NULL)
     , Size(size)
     , IsAllocated(false)
 {
     if (size > 0) {
-        BufferPtr = new char[size];
+        BufferPtr = new (flags) char[size];
         IsAllocated = true;
     }
 }

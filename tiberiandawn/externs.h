@@ -148,6 +148,7 @@ extern MouseClass Map;
 extern ScoreClass Score;
 extern MonoClass MonoArray[MonoClass::MAX_MONO_PAGES];
 extern MFCD* ScoreMix;
+extern Buffer *TheaterBuffer;
 extern MFCD* TheaterData;
 extern MFCD* LowTheaterData;
 extern MFCD* MoviesMix;

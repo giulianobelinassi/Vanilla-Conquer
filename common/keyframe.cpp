@@ -238,6 +238,12 @@ void Enable_Uncompressed_Shapes()
 
 #define FIXIT_SCORE_CRASH
 
+
+#ifdef _NDS
+/* A memcpy version that never generates 8-bit writes.  */
+void *tonccpy(void *dst, const void *src, unsigned size);
+#endif
+
 uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buffptr)
 {
 #ifdef FIXIT_SCORE_CRASH
@@ -286,10 +292,10 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
             if (Get_Running_Game() == GAME_TD) {
                 /* TD for some reason requires more memory to run when loading
                    maps and score screen.  */
-                eps = 600 * 1024;
+                eps = 450 * 1024;
             } else {
                 /* Game is RA.  It can run with less free memory.  */
-                eps = 300 * 1024;
+                eps = 400 * 1024;
             }
 
             size_t ram_free = Ram_Free(MEM_NORMAL);
@@ -354,8 +360,13 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
                 TotalSlotsUsed++;
             }
             // Commit back to the original pointer.
+#ifdef _NDS
+            /* Also inclues the keyframe.y on this copy.  */
+            tonccpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, x)), &keyfr.x, 4);
+#else
             memcpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, x)), &keyfr.x, sizeof(unsigned short));
             memcpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, y)), &keyfr.y, sizeof(unsigned short));
+#endif
 
             /*
             ** Allocate and clear the memory for the shape info
