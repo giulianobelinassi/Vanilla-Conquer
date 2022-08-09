@@ -282,12 +282,6 @@ int main(int argc, char* argv[])
     UtfArgs args(argc, argv);
     WWDebugString("RA95 - Starting up.\n");
 
-    if (Ram_Free(MEM_NORMAL) < 7000000) {
-        printf(TEXT_NO_RAM);
-
-        return (EXIT_FAILURE);
-    }
-
     /*
     **	Remember the current working directory and drive.
     */

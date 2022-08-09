@@ -565,6 +565,7 @@ template <class T, class TCRC> MixFileClass<T, TCRC>* MixFileClass<T, TCRC>::Fin
 template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(char const* filename, Buffer const* buffer)
 {
     MixFileClass<T, TCRC>* mixer = Finder(filename);
+    printf("Filename: %s\n", filename);
 
     if (mixer != NULL) {
         return (mixer->Cache(buffer));
@@ -589,6 +590,9 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(char const* fil
  *   08/08/1994 JLB : Created.                                                                 *
  *   07/12/1996 JLB : Handles attached message digest.                                         *
  *=============================================================================================*/
+
+int DS_Cache_File(void* data, int datasize, Straw *);
+
 template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* buffer)
 {
     /*
@@ -607,6 +611,7 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
         }
     } else {
 #ifdef _NDS
+        printf("DataSize: %d\n", DataSize);
         Data = Alloc(DataSize, MEM_EXPANSION); //new char[DataSize];
         if (Data == NULL)
             Data = Alloc(DataSize, MEM_NORMAL);
@@ -646,25 +651,22 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
         file.Bias(0);
         file.Bias(DataStart);
 
-#ifdef _NDS
-//        if (ExpansionMemory)
-//          ram_lock();
-#endif
         /*
         **	Fetch the whole mixfile data in one step. If the number of bytes retrieved
         **	does not equal that requested, then this indicates a serious error.
         */
-        int actual = straw->Get(Data, DataSize);
 #ifdef _NDS
-//        if (ExpansionMemory)
-//          ram_unlock();
+        int actual = DS_Cache_File(Data, DataSize, straw);
+#else
+        int actual = straw->Get(Data, DataSize);
 #endif
+        printf("DataSize: %d\n", DataSize);
+        printf("DataStart: %d\n", DataStart);
         if (actual != DataSize) {
 #ifdef _NDS
             if (!ExpansionMemory)
 #endif
               ::Free(Data);
-            printf("crc: %lx\n", Calculate_CRC(Data, DataSize));
             printf("Expected: %d, got %d\n", DataSize, actual);
             Data = NULL;
             file.Error(EIO);

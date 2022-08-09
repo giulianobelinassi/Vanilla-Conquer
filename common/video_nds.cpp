@@ -151,6 +151,11 @@ public:
         // shape in case it changes.
         if (Raw != Last_Raw) {
             Raw = Last_Raw;
+            /* On retail DS writes 8bit writes to VRAM are discarded.  So
+               create a temporary surface to transform the bitmap shape
+               into tiled.  */
+            uint8_t tiled_surface[24 * 32];
+            memset(tiled_surface, 0, sizeof(tiled_surface));
 
             // DS sprites are tiled, so we remap the texture to be displayed
             // correctly.
@@ -162,11 +167,13 @@ public:
                             int real_i = 8 * i + ii;
 
                             if (real_j < w && real_i < h)
-                                dst[256 * i + 8 * ii + 64 * j + jj] = src[real_i * w + real_j];
+                                tiled_surface[256 * i + 8 * ii + 64 * j + jj] = src[real_i * w + real_j];
                         }
                     }
                 }
             }
+            /* Blt to sprite.  */
+            memcpy(dst, tiled_surface, 32*24);
         }
     }
 

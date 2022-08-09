@@ -21,6 +21,11 @@
 
 #include <limits.h>
 
+#include "xstraw.h"
+#include "pkstraw.h"
+#include "shastraw.h"
+#include "rndstraw.h"
+
 /* DS is quasi-posix compliant: it don't provide some functions.  */
 extern "C" {
 
@@ -57,6 +62,34 @@ void DS_Filesystem_Init()
     }
 
     fs_initialized = true;
+}
+
+/* Nintendo DS Expansion Pak requires that writes are 16-bit wide.  This
+   function ensures that the file is cached correctly.  */
+int DS_Cache_File(void *data, int datasize, Straw *straw)
+{
+    if (isDSiMode()) {
+      /* DSi doesn't support the memory expansion pak, so load it directly
+         into the RAM.  */
+      return straw->Get(data, datasize);
+    }
+
+    /* Define a buffer on on-board memory, as it is more flexible.  */
+    unsigned char buf[4096];
+    unsigned char* datab = (unsigned char*) data;
+    int actual;
+    int i;
+
+    while (actual < datasize) {
+      i = straw->Get(buf, 4096);
+
+      /* If the number of bytes read isn't multiple of 2, then we align upwards
+         to ensure a 16-bit read.  */
+      memcpy((u16*) &datab[actual], buf, i + (i & 1));
+      actual += i;
+    }
+
+    return actual;
 }
 
 namespace

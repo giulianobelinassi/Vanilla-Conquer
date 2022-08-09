@@ -7,6 +7,7 @@
 //============================================================================//
 
 #include "expansionpak_nds.h"
+#include <nds.h>
 
 //===================================//
 //                                   //
@@ -289,6 +290,9 @@ static void  _ram_precalc_size ()
 bool  ram_init (RAM_TYPE type)
 //==========================================================
 {
+    if (isDSiMode())
+        return false;
+
     sysSetBusOwners(BUS_OWNER_ARM9, BUS_OWNER_ARM9);
 
     switch(type)

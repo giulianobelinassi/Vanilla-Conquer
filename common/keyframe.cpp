@@ -194,8 +194,8 @@ void Check_Use_Compressed_Shapes()
     // Uncompressed shapes don't seem to work in RA for rotated/scaled objects so wherever scale/rotate is used,
     // we will need to disable it (like in Techno_Draw_Object). ST - 11/6/2019 2:09PM
 
-    UseBigShapeBuffer = true;
-    OriginalUseBigShapeBuffer = true;
+    UseBigShapeBuffer = false;
+    OriginalUseBigShapeBuffer = false;
 }
 
 /***********************************************************************************************

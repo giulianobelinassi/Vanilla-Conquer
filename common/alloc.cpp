@@ -106,6 +106,7 @@ extern void (*Memory_Error_Exit)(char* string) = NULL;
 #ifdef _NDS
 bool ExpansionMemoryInstalled;
 size_t StackTop = 0;
+void *ExpansionAddr;
 
 #endif
 
@@ -120,17 +121,16 @@ void* Alloc(size_t bytes_to_alloc, MemoryFlagType flags)
       if (!expansion_initialized) {
         expansion_initialized = true;
         ExpansionMemoryInstalled = ram_init(DETECT_RAM);
+        ExpansionAddr = (void *) ram_unlock();
       }
 
       if (ExpansionMemoryInstalled) {
         /* 4 bytes aligned.  */
-        mem_ptr = (void*) ((((uintptr_t)ram_unlock() + 3UL) & ~3UL) + StackTop);
-        StackTop += (bytes_to_alloc + 3UL) & ~3UL;
+        mem_ptr = (void*) ((((uintptr_t)ExpansionAddr + 7UL) & ~7UL) + StackTop);
+        StackTop += (bytes_to_alloc + 7UL) & ~7UL;
 
         printf("MemPtr: %lx\n", (uintptr_t) mem_ptr);
         printf("StackTop: %d\n", StackTop);
-
-        memset(mem_ptr, 0, bytes_to_alloc);
 
         return mem_ptr;
       } else {
