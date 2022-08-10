@@ -324,8 +324,10 @@ struct FontHeader
  *   01/17/1995 PWG : Created.                                             *
  *   18/08/2020 OmniBlade : Translation to C++ added.                      *
  *=========================================================================*/
-void DS_Pause(const char *, ...);
 
+#ifdef _NDS
+/* On retail DS, the video RAM discards 8-bit writes.  This function enforces
+   a 16-bit write.  */
 static void write8_16(u8* addr, u8 val)
 {
   u16* aligned_ptr = (u16*)((intptr_t)addr & ~1); // iirc the hw auto aligns 16 bit writes, so you could try leaving the & ~1 out
@@ -334,6 +336,7 @@ static void write8_16(u8* addr, u8 val)
   aligned_val |= val << (((intptr_t)addr & 1)*8);
   *aligned_ptr = aligned_val;
 }
+#endif
 
 int Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, int bground)
 {

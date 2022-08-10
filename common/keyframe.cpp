@@ -194,8 +194,8 @@ void Check_Use_Compressed_Shapes()
     // Uncompressed shapes don't seem to work in RA for rotated/scaled objects so wherever scale/rotate is used,
     // we will need to disable it (like in Techno_Draw_Object). ST - 11/6/2019 2:09PM
 
-    UseBigShapeBuffer = false;
-    OriginalUseBigShapeBuffer = false;
+    UseBigShapeBuffer = true;
+    OriginalUseBigShapeBuffer = true;
 }
 
 /***********************************************************************************************
@@ -237,6 +237,12 @@ void Enable_Uncompressed_Shapes()
 }
 
 #define FIXIT_SCORE_CRASH
+
+
+#ifdef _NDS
+/* A memcpy version that never generates 8-bit writes.  */
+void *tonccpy(void *dst, const void *src, unsigned size);
+#endif
 
 uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buffptr)
 {
@@ -354,8 +360,13 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
                 TotalSlotsUsed++;
             }
             // Commit back to the original pointer.
+#ifdef _NDS
+            /* Also inclues the keyframe.y on this copy.  */
+            tonccpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, x)), &keyfr.x, 4);
+#else
             memcpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, x)), &keyfr.x, sizeof(unsigned short));
             memcpy(Add_Long_To_Pointer(dataptr, offsetof(KeyFrameHeaderType, y)), &keyfr.y, sizeof(unsigned short));
+#endif
 
             /*
             ** Allocate and clear the memory for the shape info
