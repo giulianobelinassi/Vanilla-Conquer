@@ -324,6 +324,17 @@ struct FontHeader
  *   01/17/1995 PWG : Created.                                             *
  *   18/08/2020 OmniBlade : Translation to C++ added.                      *
  *=========================================================================*/
+void DS_Pause(const char *, ...);
+
+static void write8_16(u8* addr, u8 val)
+{
+  u16* aligned_ptr = (u16*)((intptr_t)addr & ~1); // iirc the hw auto aligns 16 bit writes, so you could try leaving the & ~1 out
+  u16 aligned_val = *aligned_ptr;
+  aligned_val &= 0xFF00 >> (((intptr_t)addr & 1)*8);
+  aligned_val |= val << (((intptr_t)addr & 1)*8);
+  *aligned_ptr = aligned_val;
+}
+
 int Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, int bground)
 {
     GraphicViewPortClass& vp = *static_cast<GraphicViewPortClass*>(thisptr);
@@ -333,6 +344,11 @@ int Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, i
     unsigned char* dst = x + offset;
     int char_width = 0;
     int base_x = x;
+#ifdef _NDS
+    /* On retail DS, the video RAM discards 8-bit writes.  Check if dest pointer
+       goes to video memory.  DSi doesn't have this problem.  */
+    bool must_use_16_writes = ((uintptr_t )dst >= 0x06000000) && !isDSiMode();
+#endif
 
     if (FontPtr != nullptr) {
         const unsigned short* datalist = reinterpret_cast<const unsigned short*>(reinterpret_cast<const char*>(FontPtr)
@@ -443,7 +459,12 @@ int Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, i
                             unsigned char color = ColorXlat[0][color_packed & 0x0F];
 
                             if (color) {
-                                *char_dst = color;
+#ifdef _NDS
+                                if (must_use_16_writes)
+                                  write8_16(char_dst, color);
+                                else
+#endif
+                                  *char_dst = color;
                             }
 
                             ++char_dst;
@@ -456,7 +477,12 @@ int Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, i
                             color = ColorXlat[0][color_packed >> 4];
 
                             if (color) {
-                                *char_dst = color;
+#ifdef _NDS
+                                if (must_use_16_writes)
+                                  write8_16(char_dst, color);
+                                else
+#endif
+                                  *char_dst = color;
                             }
 
                             ++char_dst;
