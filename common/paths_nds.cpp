@@ -26,6 +26,8 @@
 #include "shastraw.h"
 #include "rndstraw.h"
 
+#define MIN(a, b) (((a) > (b)) ? (b) : (a))
+
 /* DS is quasi-posix compliant: it don't provide some functions.  */
 extern "C" {
 
@@ -81,7 +83,8 @@ int DS_Cache_File(void *data, int datasize, Straw *straw)
     int i;
 
     while (actual < datasize) {
-      i = straw->Get(buf, 4096);
+      int to_read = MIN(datasize - actual, 4096);
+      i = straw->Get(buf, to_read);
 
       /* If the number of bytes read isn't multiple of 2, then we align upwards
          to ensure a 16-bit read.  */
