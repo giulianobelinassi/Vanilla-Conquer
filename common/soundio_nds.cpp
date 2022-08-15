@@ -270,8 +270,9 @@ void user02DatamsgHandler(int bytes, void *data)
       // Align to word.
       n = (n + 3) & ~3UL;
 
-      /* Perform a memcpy to the address request.  */
-      dmaCopyWords(3, src, dst, n);
+      /* Perform a memcpy to the address request.  Src may be unaligned. */
+      memcpy(dst, src, n);
+      DC_FlushRange(dst, n);
   }
 
 
