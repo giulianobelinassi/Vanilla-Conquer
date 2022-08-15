@@ -241,7 +241,15 @@ typedef enum DiffType : unsigned char
 **	changed, be sure to update the makefile and rebuild all of the shape
 **	data files.
 */
-#define SHAPE_BUFFER_SIZE 131072L
+// PG set this to 131072
+#define SHAPE_BUFFER_SIZE 40000L
+
+
+/**********************************************************************
+**	This is the size of the theater buffer. This buffer is used to load
+**	theater specific assets.  Should match the largest mixfile.
+*/
+#define THEATER_BUFFER_SIZE 680000L
 
 // Use this to allow keep track of versions as they affect saved games.
 #define VERSION_NUMBER 1

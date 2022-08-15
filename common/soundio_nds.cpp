@@ -318,13 +318,20 @@ void Free_Sample(void const* sample){};
 
 // Allocate a shared region in case it needs to access stuff that is
 // unreachable to it. (like the ExpansionPak in the GBA slot).
-static unsigned char SharedArea[SHARED_CHUNK_SIZE*NUM_TRACKERS];
+static unsigned char *SharedArea;
 
 // Initialize audio-related structures.
 bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channels)
 {
     // Initialize Nintendo DS sound system.
     soundEnable();
+
+    // On original NDS we cache the sound effects on an address that the ARM7
+    // can't reach, so we allocate a temporary buffer where we will copy
+    // those sound effects.
+    if (!isDSiMode()) {
+        SharedArea = (unsigned char *) Alloc(SHARED_CHUNK_SIZE * NUM_TRACKERS, MEM_CLEAR);
+    }
 
     // Install ARM7 to ARM9 Queue, used to request music data.
     fifoSetValue32Handler(FIFO_USER_02, user02CommandHandler, 0);
@@ -350,6 +357,8 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
 // Unused, but requited by game engine.
 void Sound_End(void)
 {
+    if (SharedArea)
+        ::Free(SharedArea);
 }
 
 // Stop a sample by its handle.

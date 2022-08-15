@@ -292,7 +292,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
             if (Get_Running_Game() == GAME_TD) {
                 /* TD for some reason requires more memory to run when loading
                    maps and score screen.  */
-                eps = 600 * 1024;
+                eps = 450 * 1024;
             } else {
                 /* Game is RA.  It can run with less free memory.  */
                 eps = 400 * 1024;

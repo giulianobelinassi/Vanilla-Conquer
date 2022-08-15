@@ -227,8 +227,7 @@ public:
             int index = Get_Channel_Index();
 
             const void *src = sample;
-            size_t num = SHARED_CHUNK_SIZE;
-            void *dst = SharedArea + (num) * index;
+            void *dst = &SharedArea[SHARED_CHUNK_SIZE * index];
 
             USR2::FifoMemcpyMessage msg;
             msg.src = src;

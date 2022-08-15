@@ -126,15 +126,10 @@ void* Alloc(size_t bytes_to_alloc, MemoryFlagType flags)
 
       if (ExpansionMemoryInstalled) {
         /* 4 bytes aligned.  */
-        mem_ptr = (void*) ((((uintptr_t)ExpansionAddr + 7UL) & ~7UL) + StackTop);
-        StackTop += (bytes_to_alloc + 7UL) & ~7UL;
-
-        printf("MemPtr: %lx\n", (uintptr_t) mem_ptr);
-        printf("StackTop: %d\n", StackTop);
+        mem_ptr = (void*) ((((uintptr_t)ExpansionAddr + 3UL) & ~3UL) + StackTop);
+        StackTop += (bytes_to_alloc + 3UL) & ~3UL;
 
         return mem_ptr;
-      } else {
-        return NULL;
       }
     }
 #endif
@@ -213,7 +208,13 @@ void Free(void const* pointer)
 
         pointer = (void*)(((char*)pointer) - 16);
 #endif // MEM_CHECK
-
+#ifdef _NDS
+        /* Expansion memory is not administrated by malloc.  */
+        if ((uintptr_t)pointer >= 0x08000000) {
+            Memory_Calls--;
+            return;
+        }
+#endif
         free((void*)pointer);
         Memory_Calls--;
     }
