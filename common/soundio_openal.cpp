@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "ccfile.h"
+#include "endianness.h"
 
 typedef MixFileClass<CCFileClass> MFCD;
 
@@ -384,13 +385,16 @@ int Sample_Copy(SampleTrackerType* st,
         if (Simple_Copy(source, ssize, alternate, altsize, &fptr, sizeof(fsize)) < sizeof(fsize)) {
             break;
         }
+        fsize = le16toh(fsize);
 
         if (Simple_Copy(source, ssize, alternate, altsize, &dptr, sizeof(dsize)) < sizeof(dsize) || dsize > size) {
             break;
         }
 
-        if (Simple_Copy(source, ssize, alternate, altsize, &mptr, sizeof(magic)) < sizeof(magic)
-            || magic != AUD_CHUNK_MAGIC_ID) {
+        int simple_copy = Simple_Copy(source, ssize, alternate, altsize, &mptr, sizeof(magic));
+        magic = le32toh(magic);
+
+        if (simple_copy < sizeof(magic) || magic != AUD_CHUNK_MAGIC_ID) {
             break;
         }
 
@@ -442,6 +446,7 @@ int Stream_Sample_Vol(void* buffer, int size, bool (*callback)(short, short*, vo
 
     AUDHeaderType header;
     memcpy(&header, buffer, sizeof(header));
+    header.Size = le32toh(header.Size);
     int oldsize = header.Size;
     header.Size = size - sizeof(header);
     memcpy(buffer, &header, sizeof(header));
@@ -1019,6 +1024,10 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
         // Read in the sample's header.
         AUDHeaderType raw_header;
         memcpy(&raw_header, sample, sizeof(raw_header));
+
+        raw_header.Rate = le16toh(raw_header.Rate);
+        if (raw_header.Size < 0)
+            raw_header.Size = le32toh(raw_header.Size);
 
         // We don't support anything lower than 20000 hz.
         if (raw_header.Rate < 24000 && raw_header.Rate > 20000) {
