@@ -7,6 +7,7 @@
 #include <nds/arm9/sound.h>
 #include <nds/fifocommon.h>
 #include <nds/arm9/cache.h>
+#include <nds/system.h>
 #include "audio_fifocommon.h"
 
 /** Sound interface between C&C and the ARM7 chip.

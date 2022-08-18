@@ -41,6 +41,10 @@
 #include <errno.h>
 #include <string.h>
 
+#ifdef _NDS
+#include <nds.h>
+#endif
+
 int FontXSpacing = 0;
 int FontYSpacing = 0;
 void const* FontPtr = nullptr;
@@ -328,10 +332,10 @@ struct FontHeader
 #ifdef _NDS
 /* On retail DS, the video RAM discards 8-bit writes.  This function enforces
    a 16-bit write.  */
-static void write8_16(u8* addr, u8 val)
+static void write8_16(unsigned char* addr, unsigned char val)
 {
-  u16* aligned_ptr = (u16*)((intptr_t)addr & ~1); // iirc the hw auto aligns 16 bit writes, so you could try leaving the & ~1 out
-  u16 aligned_val = *aligned_ptr;
+  unsigned short* aligned_ptr = (unsigned short*)((intptr_t)addr & ~1); // iirc the hw auto aligns 16 bit writes, so you could try leaving the & ~1 out
+  unsigned short aligned_val = *aligned_ptr;
   aligned_val &= 0xFF00 >> (((intptr_t)addr & 1)*8);
   aligned_val |= val << (((intptr_t)addr & 1)*8);
   *aligned_ptr = aligned_val;

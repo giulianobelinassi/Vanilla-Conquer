@@ -222,7 +222,7 @@ public:
         IsMusic = is_music;
 
         /* If the AUD is at an unreachable address, ask for the ARM9 to copy it
-           to somewhere we can reach.  */
+           to somewhere we can reach.  This should never run on DSi mode.  */
         if ((u32)sample >= 0x08000000) {
             int index = Get_Channel_Index();
 
@@ -278,11 +278,17 @@ public:
             sosinfo.dwUnCompSize = raw_header.Size * (sosinfo.wBitSize / 4);
             sosCODECInitStream(&sosinfo);
         } else if (Compression == SCOMP_WESTWOOD) {
+            if (!isDSiMode()) {
+                /* SCOMP_WESTWOOD on retail DS crashes the system for some
+                   resason.  */
+                Stop_Sample();
+                return 0;
+            }
+
             /* There is a bug in SCOMP_WESTWOOD on DS in which sounds compressed
                by it get wavely loud in some audios.  So we lower their volume
                so that it doesn't bother the user too much.  */
-            Stop_Sample();
-            return 0;
+
             Volume = Volume / 6;
             Bits = 8;
         }

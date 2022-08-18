@@ -438,20 +438,20 @@ bool Any_Locked()
  *=============================================================================================*/
 void Memory_Error_Handler(void)
 {
-
-#ifdef _NDS
-    DBG_LOG("Error - out of memory");
-    swiWaitForVBlank();
-    while (1)
-        ;
-#endif
-
     GlyphX_Debug_Print("Error - out of memory.");
     VisiblePage.Clear();
     Set_Palette(GamePalette);
     while (Get_Mouse_State()) {
         Show_Mouse();
     };
+#ifdef _NDS
+    printf("\n"
+           "** This game requires the DS  **"
+           "**        expansion pak       **\n"
+           "On DSi, ensure the game is running in DSi mode.\n"
+           "\n"
+           "If you see this message in-game, report as a bug.\n");
+#endif
     WWMessageBox().Process("Error - out of memory.", "Abort", nullptr, nullptr, false);
 
     // Nope. ST - 1/10/2019 10:38AM
