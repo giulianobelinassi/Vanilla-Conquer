@@ -11,18 +11,23 @@ with multi-platform support.
 Command & Conquer: Red Alert is another game of its series released in 1996 and has
 improved gameplay mechanics, AI and graphics.
 
-**Only DSi is supported. Older DS may run the game with expansion pak but is untested.**
-
-For playing it on your Nintendo DSi, you will need:
+For playing it on your **Nintendo DSi**, you will need:
 - A jailbroken Nintendo DSi capable of running .nds ROMs in DSi mode through the memory card.
 - A memory card with at least 1.4Gb of free space for Tiberian Dawn.
 - A memory card with at least 2.0Gb of free space for Red Alert.
 - Assets from DOS Command & Conquer versions: both GDI and Nod discs, with Covert Operations also supported but not necessary.
 - Assets from Red Alert versions: Both Allied and Soviet discs, with Counterstrike and aftermath supported but not needed.
 
+For playing it on your **Nintendo DS**, you will need
+- A Flashcard.
+- The DS Expansion Pak. Opera, GBA Movie Player, and EZ flash 3in1 combo are confirmed to work.
+- A flashcard with a memory card with at least 1.4Gb of free space for Tiberian Dawn.
+- Assets from DOS Command & Conquer versions: both GDI and Nod discs, with Covert Operations also supported but not necessary.
+- **Red Alert is not supported in DS mode**.
+
 ## Downloads
 
-- [Vanilla-Conquer Nintendo DSi ROMs](https://github.com/giulianobelinassi/Vanilla-Conquer/releases/download/nds-v0.2/NDSi-Vanilla-Conquer-0.2.zip).
+- [Vanilla-Conquer Nintendo DSi ROMs](https://github.com/giulianobelinassi/Vanilla-Conquer/releases/download/nds-v0.3/NDS_Vanilla-Conquer_0.3.zip).
 - [C&C DOS: GDI disc](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_GDI.zip).
 - [C&C DOS: Nod disc](https://bigdownloads.cnc-comm.com/cnc1/DOSCNC_Nod.zip).
 - [C&C Covert Operations disc](https://bigdownloads.cnc-comm.com/cnc1/CNC_Covertops.zip).
