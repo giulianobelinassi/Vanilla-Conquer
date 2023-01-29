@@ -195,7 +195,7 @@ void* Open_Animation(char const* file_name,
     /* Fix headers on Big Endian									*/
     /*======================================================================*/
 
-#if __BIG_ENDIAN__
+#ifdef __BIG_ENDIAN__
     file_header.largest_frame_size = le16toh(file_header.largest_frame_size);
     file_header.total_frames = le16toh(file_header.total_frames);
     file_header.pixel_x = le16toh(file_header.pixel_x);
@@ -484,6 +484,10 @@ bool Animate_Frame(void* handle,
     bool direct_to_dest;           // are we going directly to the destination?
     int dest_width;                // the width of the destination buffer or page.
 
+    // Assign local pointer to the beginning of the buffer where the system information
+    // resides
+    sys_header = (SysAnimHeaderType*)handle;
+
     /* FIXME: Copy header to a temporary buffer instead of this hack.  */
     if (sys_header->total_frames > 700) {
         sys_header->current_frame = le16toh(sys_header->current_frame);
@@ -493,10 +497,6 @@ bool Animate_Frame(void* handle,
         sys_header->pixel_width = le16toh(sys_header->pixel_width);
         sys_header->pixel_height = le16toh(sys_header->pixel_height);
     }
-
-    // Assign local pointer to the beginning of the buffer where the system information
-    // resides
-    sys_header = (SysAnimHeaderType*)handle;
 
     // Get the total number of frames
     total_frames = sys_header->total_frames;

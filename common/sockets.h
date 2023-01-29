@@ -32,6 +32,7 @@ static inline int socket_cleanup(void)
 
 #else /* Assume posix style sockets on non-windows */
 
+#ifndef _N64
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h> // for getaddrinfo() and freeaddrinfo()
@@ -39,6 +40,7 @@ static inline int socket_cleanup(void)
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h> // for close()
+#endif
 typedef int SOCKET;
 #define INVALID_SOCKET       (-1)
 #define SOCKET_ERROR         (-1)

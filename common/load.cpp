@@ -304,11 +304,11 @@ unsigned int Uncompress_Data(void const* src, void* dst)
     **	compression method, size, and skip data amount.
     */
     uncomp_size = ((CompHeaderType*)src)->Size;
-#if (__BIG_ENDIAN__)
+#ifdef __BIG_ENDIAN__
     uncomp_size = bswap32(uncomp_size);
 #endif
     skip = ((CompHeaderType*)src)->Skip;
-#if (__BIG_ENDIAN__)
+#ifdef __BIG_ENDIAN__
     skip = bswap16(skip);
 #endif
     method = (CompressionType)((CompHeaderType*)src)->Method;

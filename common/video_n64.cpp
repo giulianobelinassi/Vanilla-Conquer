@@ -227,7 +227,6 @@ class VideoSurfaceDummy : public VideoSurface
 public:
     VideoSurfaceDummy(int w, int h, GBC_Enum flags)
     {
-      surface = malloc(w*h);
     }
 
     virtual ~VideoSurfaceDummy()
@@ -236,7 +235,7 @@ public:
 
     virtual void* GetData() const
     {
-        return surface;
+        return nullptr;
     }
     virtual int GetPitch() const
     {
@@ -273,8 +272,6 @@ public:
     virtual void FillRect(const Rect& rect, unsigned char color)
     {
     }
-
-    char *surface;
 };
 
 /*

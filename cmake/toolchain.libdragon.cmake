@@ -1,6 +1,6 @@
 option(TOOLCHAIN_LIBDRAGON "Use LIBDRAGON" ON) #only set if this file is called~?
 
-set(LIBDRAGON_PREFIX "/usr/local/mips64-elf")
+set(LIBDRAGON_PREFIX "/opt/libdragon/mips64-elf")
 
 include_directories(
 	${LIBDRAGON_PREFIX}/include
@@ -20,6 +20,7 @@ link_libraries(
 
 # Inform cmake that we are compiling for N64
 set(N64 ON)
+set(WIN32 OFF)
 
 # Add a macro for GCC so we can customize code
 add_definitions(-D_N64)
@@ -32,6 +33,6 @@ set(ROM_HEADER          ${LIBDRAGON_PREFIX}/lib/header)
 set(MKDFS               ${LIBDRAGON_PREFIX}/bin/mkdfs)
 
 # Set additional link options for N64 linking
-add_link_options(-Tn64.ld -Wl,--gc-sections)
+add_link_options(-Tn64.ld -Wl,--gc-sections -Wl,--wrap __do_global_ctors)
 
 include(${CMAKE_CURRENT_LIST_DIR}/libdragon-n64.cmake)

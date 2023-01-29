@@ -267,7 +267,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
     memcpy(&keyfr, dataptr, sizeof(keyfr));
 
     /* Fix keyfr data on BE machines.  */
-#if __BIG_ENDIAN__
+#ifdef __BIG_ENDIAN__
     keyfr.flags = le16toh(keyfr.flags);
     keyfr.frames = le16toh(keyfr.frames);
     keyfr.x = le16toh(keyfr.x);
@@ -346,7 +346,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
     // get offset into data
     ptr = (char*)Add_Long_To_Pointer(dataptr, (((unsigned int)framenumber << 3) + sizeof(KeyFrameHeaderType)));
     Mem_Copy(ptr, &offset[0], 12L);
-#if __BIG_ENDIAN__
+#ifdef __BIG_ENDIAN__
     frameflags = (char)(offset[0]);
 #else
     frameflags = (char)(offset[0] >> 24);

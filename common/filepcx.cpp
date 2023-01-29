@@ -86,7 +86,7 @@ static void Le_PCX_To_Be(PCX_HEADER *header)
 
 }
 
-GraphicBufferClass* Read_PCX_File(char* name, char* palette, void* Buff, long Size)
+GraphicBufferClass* Read_PCX_File(const char* name, char* palette, void* Buff, int Size)
 {
     unsigned i, j;
     unsigned rle;

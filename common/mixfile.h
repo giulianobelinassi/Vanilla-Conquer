@@ -20,6 +20,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include "endianness.h"
 #include "listnode.h"
 #include "pk.h"
 #include "buff.h"
@@ -330,7 +331,7 @@ MixFileClass<T, TCRC>::MixFileClass(char const* filename)
         return;
     straw->Get(HeaderBuffer, Count * sizeof(SubBlock));
 
-#if __BIG_ENDIAN__
+#ifdef __BIG_ENDIAN__
     /* We have to fix the mixfile sublock on big endian machines.  */
     for (int i = 0; i < Count; i++) {
         struct SubBlock* subblock = &HeaderBuffer[i];
@@ -451,14 +452,9 @@ MixFileClass<T, TCRC>::MixFileClass(char const* filename, PKey const* key)
         straw->Get(((char*)&fileheader) + sizeof(alternate), sizeof(fileheader) - sizeof(alternate));
     }
 
-<<<<<<< HEAD
     Count = le16toh(fileheader.count);
     DataSize = le32toh(fileheader.size);
-=======
-    Count = fileheader.count;
-    DataSize = fileheader.size;
-    printf("Mixfileclass %s Datasize %08x\n , filename, DataSize");
->>>>>>> b22516b (Working file system. Out of memory errors)
+
     // BGMono_Printf("Mixfileclass %s DataSize: %08x   \n",filename,DataSize);Get_Key();
     /*
     **	Load up the offset control array. If RAM is exhausted, then the mixfile is invalid.
@@ -467,7 +463,6 @@ MixFileClass<T, TCRC>::MixFileClass(char const* filename, PKey const* key)
     if (HeaderBuffer == NULL)
         return;
     straw->Get(HeaderBuffer, Count * sizeof(SubBlock));
-    FixHeaderBufferEndianness();
 
     /*
     **	The start of the embedded mixfile data will be at the current file offset.
@@ -568,17 +563,6 @@ template <class T, class TCRC> MixFileClass<T, TCRC>* MixFileClass<T, TCRC>::Fin
         ptr = ptr->Next();
     }
     return (0);
-}
-
-template <class T> void MixFileClass<T>::FixHeaderBufferEndianness()
-{
-    int i;
-    for (i = 0; i < Count; ++i)
-    {
-        HeaderBuffer[i].CRC    = le32toh(HeaderBuffer[i].CRC);
-        HeaderBuffer[i].Offset = le32toh(HeaderBuffer[i].Offset);
-        HeaderBuffer[i].Size   = le32toh(HeaderBuffer[i].Size);
-    }
 }
 
 /***********************************************************************************************

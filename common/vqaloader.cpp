@@ -1184,7 +1184,7 @@ VQAData* VQA_AllocBuffers(VQAHeader* header, VQAConfig* config)
     if (data == nullptr) {
         return nullptr;
     }
-#if __BIG_ENDIAN__
+#ifdef __BIG_ENDIAN__
     /* Fix header on Big Endian.  */
     header->Frames = le16toh(header->Frames);
     header->Flags = le16toh(header->Flags);

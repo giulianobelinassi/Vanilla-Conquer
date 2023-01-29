@@ -40,7 +40,7 @@ public:
     virtual ~Find_File_Data_Libdragon();
 
     virtual const char* GetName() const;
-    virtual unsigned long GetTime() const;
+    virtual unsigned int GetTime() const;
 
     virtual bool FindFirst(const char* fname);
     virtual bool FindNext();
@@ -71,7 +71,7 @@ const char* Find_File_Data_Libdragon::GetName() const
     return FullName;
 }
 
-unsigned long Find_File_Data_Libdragon::GetTime() const
+unsigned int Find_File_Data_Libdragon::GetTime() const
 {
     return 0;
 }

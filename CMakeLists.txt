@@ -7,7 +7,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo" FORCE)
 endif()
 
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain.libdragon.cmake)
+#include(${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain.libdragon.cmake)
 
 project(VanillaConquer CXX)
 
@@ -74,6 +74,7 @@ if(NOT BUILD_VANILLATD AND NOT BUILD_VANILLARA OR N64)
     set(SDL1 OFF)
     set(SDL2 OFF)
     set(OPENAL OFF)
+    set(NETWORKING OFF)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
