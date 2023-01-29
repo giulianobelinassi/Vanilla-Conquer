@@ -681,15 +681,15 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
         int dx = 0, dy = 0;
 
         if (keys_held.c[0].up || keys_down.c[0].up) {
-          dy -= 1;
+          dy -= 3;
         } else if (keys_held.c[0].down || keys_down.c[0].down) {
-          dy += 1;
+          dy += 3;
         }
 
         if (keys_held.c[0].right || keys_down.c[0].right) {
-          dx += 1;
+          dx += 3;
         } else if (keys_held.c[0].left || keys_down.c[0].left) {
-          dx -= 1;
+          dx -= 3;
         }
 
         if (dx || dy) {

@@ -80,6 +80,8 @@ SurfaceMonitorClass& AllSurfaces = AllSurfacesDummy; // List of all direct draw 
  * HISTORY:                                                                                    *
  *   09/26/1995 PWG : Created.                                                                 *
  *=============================================================================================*/
+void Timer_VBlank();
+
 bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
     init_interrupts();
@@ -92,6 +94,8 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     } else {
       display_init(RESOLUTION_640x480, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
     }
+
+    register_VI_handler(Timer_VBlank);
 
     return true;
 }

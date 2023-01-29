@@ -15,6 +15,20 @@ extern WWMouseClass* WWMouse;
 void Video_Render_Frame();
 #endif
 
+#ifdef _N64
+unsigned Get_Ticks(void);
+
+void Frame_Limiter(FrameLimitFlags flags)
+{
+  static unsigned last_update = 0;
+  unsigned curr_frame = Get_Ticks();
+
+  /* Skip one frame to render at 30 fps maximum.  */
+  if (curr_frame > last_update + 1) {
+    Video_Render_Frame();
+  }
+}
+#else
 void Frame_Limiter(FrameLimitFlags flags)
 {
     static auto frame_start = std::chrono::steady_clock::now();
@@ -57,3 +71,4 @@ void Frame_Limiter(FrameLimitFlags flags)
         frame_start = std::chrono::steady_clock::now();
     }
 }
+#endif

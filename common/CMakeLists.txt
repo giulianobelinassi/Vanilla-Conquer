@@ -85,7 +85,6 @@ set(COMMON_SRC
     soscodec.cpp
     stamp.cpp
     straw.cpp
-    timer.cpp
     timerdwn.cpp
     tobuff.cpp
     toggle.cpp
@@ -101,11 +100,11 @@ set(COMMON_SRC
 )
 
 if (WIN32)
-    list(APPEND COMMON_SRC file_win.cpp paths_win.cpp)
+    list(APPEND COMMON_SRC file_win.cpp paths_win.cpp timer.cpp)
 elseif (N64)
-	list(APPEND COMMON_SRC file_n64.cpp paths_n64.cpp)
+    list(APPEND COMMON_SRC file_n64.cpp paths_n64.cpp timer_n64.cpp)
 else()
-    list(APPEND COMMON_SRC file_posix.cpp paths_posix.cpp)
+    list(APPEND COMMON_SRC file_posix.cpp paths_posix.cpp timer.cpp)
 endif()
 
 set(COMMONR_SRC
