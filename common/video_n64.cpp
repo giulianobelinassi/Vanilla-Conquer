@@ -86,6 +86,7 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
     init_interrupts();
     rdp_init();
+    rdpq_init();
     controller_init();
     timer_init();
 
@@ -324,6 +325,27 @@ public:
 
       while( !(disp = display_lock()) );
 
+
+      // Attach the mighty RDP
+      rdpq_attach(disp);
+
+      // Load the palette
+      data_cache_hit_writeback(CurrN64Pal, 256*2);
+      rdpq_tex_load_tlut(CurrN64Pal, 0, 256);
+
+      // Set copy render mode, with palette lookup
+      rdpq_set_mode_copy(false);
+      rdpq_mode_tlut(TLUT_RGBA16);
+
+      // Blit
+      //static const rdpq_blitparms_t fix_aspect_ratio = {.scale_y = 1.2f};
+      rdpq_tex_blit(&Surface, 0, 20, NULL);
+
+      // Detatch the RDP and show
+      rdpq_detach_show();
+
+/*
+      // Software render.
       int16_t w = Surface.width;
       int16_t h = Surface.height;
       uint32_t len = w*h;
@@ -336,6 +358,7 @@ public:
         *dest_buffer++ = CurrN64Pal[*src_buffer++];
 
       display_show(disp);
+*/
     }
 
     surface_t Surface;
