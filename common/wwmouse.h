@@ -64,6 +64,9 @@ public:
     int Get_Mouse_X(void);
     int Get_Mouse_Y(void);
     void Get_Mouse_XY(int& x, int& y);
+#ifdef _N64
+    void Set_Mouse_XY(int x, int y);
+#endif
     //
     // The following two routines can be used to render the mouse onto a graphicbuffer
     // other than the hidpage.
@@ -120,6 +123,10 @@ private:
 #ifdef _WIN32
     CRITICAL_SECTION MouseCriticalSection; // Control for mouse re-enterancy
     unsigned TimerHandle;
+#endif
+
+#ifdef _N64
+    int X, Y;
 #endif
 };
 

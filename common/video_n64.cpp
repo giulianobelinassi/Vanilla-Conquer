@@ -338,7 +338,6 @@ public:
 
 void Video_Render_Frame(void)
 {
-  //DBG_LOG("Render called");
   if (frontSurface) {
     frontSurface->RenderSurface();
   }

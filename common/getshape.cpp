@@ -243,7 +243,7 @@ int Get_Shape_Width(void const* shape)
 {
     Shape_Type* shp = (Shape_Type*)shape;
 
-    return (shp->Width);
+    return le16toh(shp->Width);
 
 } /* end of Get_Shape_Width */
 

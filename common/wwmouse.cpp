@@ -33,6 +33,7 @@
 #include "wwmouse.h"
 #include "lcw.h"
 #include "settings.h"
+#include "debugstring.h"
 #include <string.h>
 #ifdef SDL_BUILD
 #include <SDL.h>
@@ -107,6 +108,11 @@ WWMouseClass::WWMouseClass(GraphicViewPortClass* scr, int mouse_max_width, int m
     // TimerHandle = timeSetEvent( 1000/60 , 1 , ::Process_Mouse, 0 , TIME_PERIODIC);
 #if defined(_WIN32) && !defined(REMASTER_BUILD) && !defined(SDL_BUILD)
     TimerHandle = timeSetEvent(1000 / 60, 1, ::Process_Mouse, 0, TIME_PERIODIC | TIME_KILL_SYNCHRONOUS);
+#endif
+
+#ifdef _N64
+    X = scr->Get_Width() / 2;
+    Y = scr->Get_Height() / 2;
 #endif
     // Removed. ST - 2/13/2019 5:12PM
 }
@@ -625,8 +631,20 @@ void WWMouseClass::Get_Mouse_XY(int& x, int& y)
     GetCursorPos(&pt);
     x = pt.x;
     y = pt.y;
+#elif defined(_N64)
+    x = X;
+    y = Y;
 #endif
 }
+
+
+#ifdef _N64
+void WWMouseClass::Set_Mouse_XY(int x, int y)
+{
+    X = x;
+    Y = y;
+}
+#endif
 
 void WWMouseClass::Mouse_Shadow_Buffer(GraphicViewPortClass* viewport,
                                        void* buffer,
