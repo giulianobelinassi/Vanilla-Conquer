@@ -54,6 +54,7 @@
 #include "wwkeyboard.h"
 #include "video.h"
 #include "miscasm.h"
+#include "wwmouse.h"
 #include <string.h>
 #include <cmath>
 #include <cstdlib>
@@ -61,7 +62,11 @@
 #include <SDL.h>
 #include "sdl_keymap.h"
 #endif
+#ifdef _N64
+#include <libdragon.h>
+#endif
 #include "settings.h"
+#include "debugstring.h"
 
 #define ARRAY_SIZE(x) int(sizeof(x) / sizeof(x[0]))
 
@@ -664,6 +669,64 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             }
             TranslateMessage(&msg);
             DispatchMessageA(&msg);
+        }
+    }
+#elif defined(_N64)
+    if (!Is_Buffer_Full()) {
+        DBG_LOG("Processing controller");
+        controller_scan();
+        struct controller_data keys_down = get_keys_down();
+        struct controller_data keys_up = get_keys_up();
+        struct controller_data keys_held = get_keys_held();
+        int dx = 0, dy = 0;
+
+        if (keys_held.c[0].up || keys_down.c[0].up) {
+          dy -= 1;
+        } else if (keys_held.c[0].down || keys_down.c[0].down) {
+          dy += 1;
+        }
+
+        if (keys_held.c[0].right || keys_down.c[0].right) {
+          dx += 1;
+        } else if (keys_held.c[0].left || keys_down.c[0].left) {
+          dx -= 1;
+        }
+
+        if (dx || dy) {
+          DBG_LOG("About to move mouse");
+          int x, y;
+          Get_Mouse_XY(x, y);
+          x += dx;
+          y += dy;
+          DBG_LOG("x = %d, y = %d", x, y);
+          Set_Mouse_XY(x, y);
+          Process_Mouse();
+        }
+
+        if (keys_down.c[0].A) {
+          int x, y;
+          Get_Mouse_XY(x, y);
+          Put_Mouse_Message(VK_LBUTTON, x, y, false);
+        } else if (keys_down.c[0].B) {
+          int x, y;
+          Get_Mouse_XY(x, y);
+          Put_Mouse_Message(VK_RBUTTON, x, y, false);
+        }
+
+        if (keys_up.c[0].A) {
+          int x, y;
+          Get_Mouse_XY(x, y);
+          Put_Mouse_Message(VK_LBUTTON, x, y, true);
+        } else if (keys_up.c[0].B) {
+          int x, y;
+          Get_Mouse_XY(x, y);
+          Put_Mouse_Message(VK_RBUTTON, x, y, true);
+        }
+
+        if (keys_down.c[0].start) {
+            Put_Key_Message(VK_ESCAPE, false);
+        } else if (keys_up.c[0].start) {
+            Put_Key_Message(VK_ESCAPE, true);
         }
     }
 #endif

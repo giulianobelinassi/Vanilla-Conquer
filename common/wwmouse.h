@@ -139,4 +139,8 @@ void* Set_Mouse_Cursor(int hotx, int hoty, void* cursor);
 int Get_Mouse_X(void);
 int Get_Mouse_Y(void);
 
+void Get_Mouse_XY(int &x, int &y);
+void Set_Mouse_XY(int x, int y);
+void Process_Mouse(void);
+
 #endif

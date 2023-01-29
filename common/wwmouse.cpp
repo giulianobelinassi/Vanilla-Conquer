@@ -957,3 +957,18 @@ int Get_Mouse_Y(void)
         return (0);
     return (_Mouse->Get_Mouse_Y());
 }
+
+void Get_Mouse_XY(int &x, int &y)
+{
+    _Mouse->Get_Mouse_XY(x, y);
+}
+
+void Set_Mouse_XY(int x, int y)
+{
+    _Mouse->Set_Mouse_XY(x, y);
+}
+
+void Process_Mouse(void)
+{
+  _Mouse->Process_Mouse();
+}
