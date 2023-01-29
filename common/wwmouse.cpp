@@ -169,7 +169,7 @@ void WWMouseClass::Unblock_Mouse(GraphicBufferClass* buffer)
 
 void WWMouseClass::Process_Mouse(void)
 {
-#if !defined(REMASTER_BUILD) && !defined(SDL_BUILD)
+#if !defined(REMASTER_BUILD) && !defined(SDL2_BUILD)
     int x, y;
 
     //
@@ -639,10 +639,25 @@ void WWMouseClass::Get_Mouse_XY(int& x, int& y)
 
 
 #ifdef _N64
+extern int ScreenWidth;
+extern int ScreenHeight;
 void WWMouseClass::Set_Mouse_XY(int x, int y)
 {
+    if (x > ScreenWidth)
+      x = ScreenWidth-1;
+    else if (x < 0) {
+      x = 0;
+    }
+
+    if (y > ScreenHeight) {
+      y = ScreenHeight-1;
+    } else if (y < 0) {
+      y = 0;
+    }
+
     X = x;
     Y = y;
+
 }
 #endif
 
@@ -957,7 +972,7 @@ int Get_Mouse_Y(void)
         return (0);
     return (_Mouse->Get_Mouse_Y());
 }
-
+#ifdef _N64
 void Get_Mouse_XY(int &x, int &y)
 {
     _Mouse->Get_Mouse_XY(x, y);
@@ -972,3 +987,4 @@ void Process_Mouse(void)
 {
   _Mouse->Process_Mouse();
 }
+#endif

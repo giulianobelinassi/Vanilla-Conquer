@@ -419,7 +419,7 @@ uintptr_t Build_Frame(void const* dataptr, unsigned short framenumber, void* buf
             subframe = 2;
 
             while (currframe <= framenumber) {
-                offdiff = (offset[subframe] & 0x00FFFFFFL) - offcurr;
+                offdiff = (le32toh(offset[subframe]) & 0x00FFFFFFL) - offcurr;
 
 #ifndef FIXIT_SCORE_CRASH
                 if (((offset[subframe + 2] & 0x00FFFFFFL) - offcurr) >= (0x00010000L - off16)) {

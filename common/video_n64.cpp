@@ -330,6 +330,7 @@ public:
 
       const uint8_t *src_buffer = (const uint8_t*) Surface.buffer;
       uint16_t *dest_buffer = (uint16_t*) disp->buffer;
+      dest_buffer += 20 * w;
 
       for (int i = 0; i < len; i++)
         *dest_buffer++ = CurrN64Pal[*src_buffer++];

@@ -673,7 +673,6 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
     }
 #elif defined(_N64)
     if (!Is_Buffer_Full()) {
-        DBG_LOG("Processing controller");
         controller_scan();
         struct controller_data keys_down = get_keys_down();
         struct controller_data keys_up = get_keys_up();
@@ -693,12 +692,10 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
         }
 
         if (dx || dy) {
-          DBG_LOG("About to move mouse");
           int x, y;
           Get_Mouse_XY(x, y);
           x += dx;
           y += dy;
-          DBG_LOG("x = %d, y = %d", x, y);
           Set_Mouse_XY(x, y);
           Process_Mouse();
         }
