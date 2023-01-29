@@ -41,6 +41,8 @@
 #include "palette.h"
 #include "video.h"
 #include <cstdio>
+#include <libdragon.h>
+#include "debugstring.h"
 
 class SurfaceMonitorClassDummy : public SurfaceMonitorClass
 {
@@ -80,6 +82,17 @@ SurfaceMonitorClass& AllSurfaces = AllSurfacesDummy; // List of all direct draw 
  *=============================================================================================*/
 bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
+    init_interrupts();
+    rdp_init();
+    controller_init();
+    timer_init();
+
+    if (w == 320) {
+      display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+    } else {
+      display_init(RESOLUTION_640x480, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+    }
+
     return true;
 }
 
@@ -171,8 +184,28 @@ void Wait_Vert_Blank(void)
  * HISTORY:                                                                                    *
  *    10/11/95 3:33PM ST : Created                                                             *
  *=============================================================================================*/
+
+#define RGB8(r,g,b)  (((r)>>3)|(((g)>>3)<<5)|(((b)>>3)<<10))
+#define RGB15(r,g,b)  ((b)|((g)<<5)|((r)<<10))
+#define RGB5(r,g,b)  ((r)|((g)<<5)|((b)<<10))
+
+static uint16_t CurrN64Pal[256];
+
 void Set_DD_Palette(void* palette)
 {
+    const char *cpalette = (const char *) palette;
+    unsigned r, g, b;
+
+    for (int i = 0; i < 256; i++)
+    {
+      r = cpalette[3*i + 0] << 2;
+      g = cpalette[3*i + 1] << 2;
+      b = cpalette[3*i + 2] << 2;
+
+      CurrN64Pal[i] = (uint16_t) (graphics_make_color(r, g, b, 0xff)) ;
+
+      //CurrN64Pal[i] = RGB15(r, g, b);//graphics_make_color(r,g,b,a);
+    }
 }
 
 /***********************************************************************************************
@@ -218,28 +251,36 @@ SurfaceMonitorClass::SurfaceMonitorClass()
     SurfacesRestored = false;
 }
 
+class VideoSurfaceN64;
+static VideoSurfaceN64 *frontSurface;
+
 /*
 ** VideoSurfaceDDraw
 */
 
-class VideoSurfaceDummy : public VideoSurface
+class VideoSurfaceN64 : public VideoSurface
 {
 public:
-    VideoSurfaceDummy(int w, int h, GBC_Enum flags)
+    VideoSurfaceN64(int w, int h, GBC_Enum flags)
     {
+      Surface = surface_alloc(FMT_CI8, w, h);
+
+      if (flags & GBC_VISIBLE) {
+        frontSurface = this;
+      }
     }
 
-    virtual ~VideoSurfaceDummy()
+    virtual ~VideoSurfaceN64()
     {
     }
 
     virtual void* GetData() const
     {
-        return nullptr;
+        return Surface.buffer;
     }
     virtual int GetPitch() const
     {
-        return 0;
+        return Surface.stride;
     }
     virtual bool IsAllocated() const
     {
@@ -257,12 +298,12 @@ public:
 
     virtual bool LockWait()
     {
-        return false;
+        return true;
     }
 
     virtual bool Unlock()
     {
-        return false;
+        return true;
     }
 
     virtual void Blt(const Rect& destRect, VideoSurface* src, const Rect& srcRect, bool mask)
@@ -272,7 +313,36 @@ public:
     virtual void FillRect(const Rect& rect, unsigned char color)
     {
     }
+
+    void RenderSurface(void)
+    {
+      surface_t *disp;
+
+      while( !(disp = display_lock()) );
+
+      int16_t w = Surface.width;
+      int16_t h = Surface.height;
+      uint32_t len = w*h;
+
+      const uint8_t *src_buffer = (const uint8_t*) Surface.buffer;
+      uint16_t *dest_buffer = (uint16_t*) disp->buffer;
+
+      for (int i = 0; i < len; i++)
+        *dest_buffer++ = CurrN64Pal[*src_buffer++];
+
+      display_show(disp);
+    }
+
+    surface_t Surface;
 };
+
+void Video_Render_Frame(void)
+{
+  //DBG_LOG("Render called");
+  if (frontSurface) {
+    frontSurface->RenderSurface();
+  }
+}
 
 /*
 ** Video
@@ -294,5 +364,5 @@ Video& Video::Shared()
 
 VideoSurface* Video::CreateSurface(int w, int h, GBC_Enum flags)
 {
-    return new VideoSurfaceDummy(w, h, flags);
+    return new VideoSurfaceN64(w, h, flags);
 }

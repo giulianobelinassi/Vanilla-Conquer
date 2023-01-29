@@ -223,7 +223,7 @@ static void initialize_libdragon()
 int main(int argc, char** argv)
 {
 #ifdef _N64
-    initialize_libdragon();
+    //initialize_libdragon();
 #endif
     UtfArgs args(argc, argv);
     CCDebugString("C&C95 - Starting up.\n");

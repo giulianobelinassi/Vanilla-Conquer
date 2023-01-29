@@ -41,6 +41,7 @@
 #include <stdlib.h>
 
 #include "wwmem.h"
+#include "debugstring.h"
 
 size_t Largest_Mem_Block(void);
 

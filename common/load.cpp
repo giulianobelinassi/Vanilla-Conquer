@@ -42,6 +42,7 @@
 #include "misc.h"
 #include "wwstd.h"
 #include "wwmem.h"
+#include "debugstring.h"
 
 /*=========================================================================*/
 /* The following PRIVATE functions are in this file:                       */

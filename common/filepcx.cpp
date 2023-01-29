@@ -109,7 +109,7 @@ GraphicBufferClass* Read_PCX_File(const char* name, char* palette, void* Buff, i
     file_handle.Open(READ);
 
     file_handle.Read(&header, sizeof(PCX_HEADER));
-    Le_PCX_To_Be(&header);
+    //Le_PCX_To_Be(&header);
 
     /* PCX header is on little endian format.  */
     header.width = le16toh(header.width);
