@@ -182,6 +182,13 @@ char const* ThemeClass::Full_Name(ThemeType theme) const
 void ThemeClass::AI(void)
 {
     if (SampleType && !Debug_Quiet) {
+        /*
+        DBG_LOG("ScoresPresent = %d", ScoresPresent);
+        DBG_LOG("ScoresVolume = %d", Options.ScoreVolume);
+        DBG_LOG("StillPlayinge = %d", Still_Playing());
+        DBG_LOG("Pending = %d", Pending);
+        DBG_LOG("GameInFocus = %d", GameInFocus);
+        */
         if (ScoresPresent && Options.ScoreVolume && !Still_Playing() && Pending != THEME_NONE && GameInFocus) {
 
             /*
