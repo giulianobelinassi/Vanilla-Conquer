@@ -9,16 +9,24 @@
 // distributed with this program. You should have received a copy of the
 // GNU General Public License along with permitted additional restrictions
 // with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
+
+#include <stdlib.h>
+#include <algorithm>
+#include <libdragon.h>
+#include <mixer.h>
+
 #include "audio.h"
 #include "auduncmp.h"
 #include "file.h"
 #include "memflag.h"
 #include "soscomp.h"
 #include "sound.h"
-#include <stdlib.h>
-#include <algorithm>
 #include "endianness.h"
 #include "debugstring.h"
+
+// TODO:
+#undef DBG_LOG
+#define DBG_LOG(...)
 
 enum
 {
@@ -29,7 +37,7 @@ enum
     PRIORITY_MAX = 255,
     MAX_SAMPLE_TRACKERS = 5, // C&C issue where sounds get cut off is because of the small number of trackers.
     STREAM_BUFFER_COUNT = 16,
-    BUFFER_CHUNK_SIZE = 8192, // 256 * 32,
+    BUFFER_CHUNK_SIZE = 4096, //Larger than that results in crash in N64 mixer system.
     UNCOMP_BUFFER_SIZE = 2098,
     BUFFER_TOTAL_BYTES = BUFFER_CHUNK_SIZE * 4, // 32 kb
     TIMER_DELAY = 25,
@@ -188,6 +196,8 @@ struct SampleTrackerType
 
     // A set of buffers
     //ALuint AudioBuffers[OPENAL_BUFFER_COUNT];
+
+    waveform_t WaveObj;
 };
 
 struct LockedDataType
@@ -362,6 +372,7 @@ int Sample_Copy(SampleTrackerType* st,
             break;
         }
 
+        dsize = le16toh(dsize);
         int simple_copy = Simple_Copy(source, ssize, alternate, altsize, &mptr, sizeof(magic));
         magic = le32toh(magic);
 
@@ -436,6 +447,7 @@ int Stream_Sample_Vol(void* buffer, int size, bool (*callback)(short, short*, vo
 
 bool File_Callback(short id, short* odd, void** buffer, int* size)
 {
+    DBG_LOG("File_Callback");
     if (id == INVALID_AUDIO_HANDLE) {
         return false;
     }
@@ -504,6 +516,7 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
 
 void File_Stream_Preload(int index)
 {
+    DBG_LOG("File_Stream_Preload");
     SampleTrackerType* st = &LockedData.SampleTracker[index];
     int maxnum = (LockedData.StreamBufferCount / 2) + 4;
     int num = st->Loading ? std::min<int>(st->FilePending + 2, maxnum) : maxnum;
@@ -514,6 +527,9 @@ void File_Stream_Preload(int index)
         int size = Read_File(st->FileHandle,
                              static_cast<char*>(st->FileBuffer) + i * LockedData.StreamBufferSize,
                              LockedData.StreamBufferSize);
+
+
+        DBG_LOG("size = %d", size);
 
         if (size > 0) {
             st->FilePendingSize = size;
@@ -566,12 +582,16 @@ void File_Stream_Preload(int index)
 
 int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_start)
 {
-    DBG_LOG("File to play: %s", filename);
+    DBG_LOG("File_Stream_Sample_Vol: %s", filename);
 
-    if (LockedData.DigiHandle == INVALID_AUDIO_HANDLE || filename == nullptr || !Find_File(filename)) {
+    /* Check if audio engine was initialized and sanity check arguments.  */
+    if (LockedData.DigiHandle == INVALID_AUDIO_HANDLE ||
+          filename == nullptr || !Find_File(filename)) {
         return INVALID_AUDIO_HANDLE;
     }
 
+    /* If a buffer for streaming .AUD files from disk was not allocated yet, then
+       allocate it.  */
     if (FileStreamBuffer == nullptr) {
         FileStreamBuffer = malloc((unsigned int)(LockedData.StreamBufferSize * LockedData.StreamBufferCount));
 
@@ -580,18 +600,21 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
         }
     }
 
+    /* If buffer was not allocated, quit.  */
     if (FileStreamBuffer == nullptr) {
         return INVALID_AUDIO_HANDLE;
     }
 
+    /* Open file to stream.  */
     int fh = Open_File(filename, 1);
-
     if (fh == INVALID_FILE_HANDLE) {
         return INVALID_AUDIO_HANDLE;
     }
 
+    /* Get a free tracker for this sample.  */
     int handle = Get_Free_Sample_Handle(PRIORITY_MAX);
 
+    /* If tracker is valid.  */
     if (handle < MAX_SAMPLE_TRACKERS) {
         SampleTrackerType* st = &LockedData.SampleTracker[handle];
         st->IsScore = true;
@@ -609,6 +632,7 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
 
 void Sound_Callback()
 {
+    //DBG_LOG("Sound_Callback");
     if (!AudioDone && LockedData.DigiHandle != INVALID_AUDIO_HANDLE) {
         Maintenance_Callback();
 
@@ -661,6 +685,15 @@ void Sound_Callback()
 
 void Maintenance_Callback()
 {
+    // TODO: TESTING
+    if (audio_can_write()) {
+      short *buf = audio_write_begin();
+      mixer_poll(buf, audio_get_buffer_length());
+      audio_write_end();
+    }
+
+#if 0
+
     if (AudioDone) {
         return;
     }
@@ -754,6 +787,7 @@ void Maintenance_Callback()
 
         --LockedData.VolumeLock;
     }
+#endif
 };
 
 void* Load_Sample(char const* filename)
@@ -820,6 +854,7 @@ int Sample_Read(int fh, void* buffer, int size)
 
 void Free_Sample(const void* sample)
 {
+    DBG_LOG("Free_Sample");
     if (sample != nullptr) {
         free((void*)sample);
     }
@@ -827,28 +862,16 @@ void Free_Sample(const void* sample)
 
 bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channels)
 {
+    DBG_LOG("Audio_Init");
     Init_Locked_Data();
-    /*
-    ALCenum error;
-    ALCdevice* device = alcOpenDevice(nullptr);
 
-    if (device == nullptr) {
+    /* Initialize the audio hardware.  */
+    audio_init(24000, MAX_SAMPLE_TRACKERS * OPENAL_BUFFER_COUNT);
 
-        //CCDebugString("Error occured getting OpenAL device.\n");
-
-        return false;
-    }
-*/
-    //OpenALContext = alcCreateContext(device, nullptr);
-    if (/*OpenALContext == nullptr || !alcMakeContextCurrent(OpenALContext)*/ false) {
-        //CCDebugString("OpenAL failed to make audio context current.\n");
-        //alcCloseDevice(device);
-        //OpenALContext = nullptr;
-        return false;
-    }
+    /* Initialize the Nintendo 64 mixer.  */
+    mixer_init(MAX_SAMPLE_TRACKERS);
 
     LockedData.DigiHandle = 1;
-
     LockedData.UncompBuffer = malloc(UNCOMP_BUFFER_SIZE);
 
     if (LockedData.UncompBuffer == nullptr) {
@@ -856,27 +879,10 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
         return false;
     }
 
-    // Create placback buffers for all trackers.
+    // TODO: Check necessity of this.
     for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
         SampleTrackerType* st = &LockedData.SampleTracker[i];
-
-        // Gen buffers on audio start?
-        // alGenBuffers(OPENAL_BUFFER_COUNT, st->AudioBuffers);
-/*
-        if ((error = alGetError()) != AL_NO_ERROR) {
-            //CCDebugString(Get_OpenAL_Error(error));
-            return false;
-        }
-*/
-        //alGenSources(1, &st->OpenALSource);
-/*
-        if ((error = alGetError()) != AL_NO_ERROR) {
-            //CCDebugString(Get_OpenAL_Error(error));
-            return false;
-        }
-*/
-        st->Frequency = rate;
-        //st->Format = Get_OpenAL_Format(bits_per_sample, stereo ? 2 : 1);
+        st->Frequency = 22050;
     }
 
     SoundType = SFX_ALFX;
@@ -888,6 +894,7 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
 
 void Sound_End()
 {
+    DBG_LOG("Sound_End");
     if (/*OpenALContext == nullptr*/ true) {
         for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
             Stop_Sample(i);
@@ -916,6 +923,7 @@ void Sound_End()
 
 void Stop_Sample(int index)
 {
+    DBG_LOG("Stop_Sample");
     if (LockedData.DigiHandle != INVALID_AUDIO_HANDLE && index < MAX_SAMPLE_TRACKERS && !AudioDone) {
         SampleTrackerType* st = &LockedData.SampleTracker[index];
 
@@ -929,16 +937,8 @@ void Stop_Sample(int index)
             st->Priority = 0;
 
             if (!st->Loading) {
-                int processed_count = -1;
-                //alSourceStop(st->OpenALSource);
-                //alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed_count);
-
-                while (processed_count-- > 0) {
-                    //ALuint tmp;
-                    //alSourceUnqueueBuffers(st->OpenALSource, 1, &tmp);
-                }
-
-                //alDeleteBuffers(OPENAL_BUFFER_COUNT, st->AudioBuffers);
+                // Stop the channel.
+                mixer_ch_stop(index);
             }
 
             st->Loading = false;
@@ -955,6 +955,7 @@ void Stop_Sample(int index)
 
 bool Sample_Status(int index)
 {
+    //DBG_LOG("Sample_Status");
     if (index < 0) {
         return false;
     }
@@ -976,17 +977,14 @@ bool Sample_Status(int index)
     if (!st->Active) {
         return false;
     }
-/*
-    ALint val;
-    alGetSourcei(st->OpenALSource, AL_SOURCE_STATE, &val);
 
-    return val == AL_PLAYING;
-*/
-    return true;
+    // Look in N64 mixer if it is playing.
+    return mixer_ch_playing(index);
 };
 
 bool Is_Sample_Playing(const void* sample)
 {
+    //DBG_LOG("Is_Sample_Playing");
     if (AudioDone || sample == nullptr) {
         return false;
     }
@@ -1002,6 +1000,7 @@ bool Is_Sample_Playing(const void* sample)
 
 void Stop_Sample_Playing(const void* sample)
 {
+    DBG_LOG("Stop_Sample_Playing");
     if (sample != nullptr) {
         for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
             if (LockedData.SampleTracker[i].Original == sample) {
@@ -1019,6 +1018,7 @@ int Play_Sample(const void* sample, int priority, int volume, signed short panlo
 
 int Attempt_To_Play_Buffer(int id)
 {
+    DBG_LOG("Attempt_To_Play_Buffer");
     SampleTrackerType* st = &LockedData.SampleTracker[id];
 
     //alSourcePlay(st->OpenALSource);
@@ -1029,8 +1029,71 @@ int Attempt_To_Play_Buffer(int id)
     return id;
 }
 
+void Waveform_Update(void *ctx, samplebuffer_t *sbuf, int wpos, int wlen, bool seeking)
+{
+  int tracker = (int) ctx;
+  SampleTrackerType *st = &LockedData.SampleTracker[tracker];
+
+  if (!st->Active) {
+    return;
+  }
+
+  // If this tracker needs processing and isn't already marked as being processed, then process it.
+  if (st->Service) {
+    // Do we have more data in this tracker to play?
+    if (st->MoreSource) {
+      int processed_buffers = -1;
+      int bytes = (st->WaveObj.bits / 8);
+      int bytes_to_read = wlen * bytes;
+      int bytes_read = 0;
+
+      while (bytes_to_read > 0 && st->MoreSource) {
+        void *dest = samplebuffer_append(sbuf, BUFFER_CHUNK_SIZE / bytes);
+        int bytes_copied = Sample_Copy(st,
+            &st->Source,
+            &st->Remainder,
+            &st->QueueBuffer,
+            &st->QueueSize,
+            dest,
+            BUFFER_CHUNK_SIZE,
+            st->Compression,
+            nullptr,
+            nullptr);
+
+        if (bytes_copied != BUFFER_CHUNK_SIZE) {
+          st->MoreSource = false;
+        }
+
+        bytes_to_read -= bytes_copied;
+      }
+    }/* else {
+      // TODO: This never runs?
+
+      if (!mixer_ch_playing(tracker)) {
+        st->Service = 0;
+        Stop_Sample(tracker);
+      }
+    }*/
+  }
+
+  if (!st->QueueBuffer && st->FilePending != 0) {
+    st->QueueBuffer = static_cast<char*>(st->FileBuffer)
+      + LockedData.StreamBufferSize * (st->Odd % LockedData.StreamBufferCount);
+    --st->FilePending;
+    ++st->Odd;
+
+    if (st->FilePending != 0) {
+      st->QueueSize = LockedData.StreamBufferSize;
+    } else {
+      st->QueueSize = st->FilePendingSize;
+    }
+  }
+}
+
+
 int Play_Sample_Handle(const void* sample, int priority, int volume, signed short panloc, int id)
 {
+    DBG_LOG("Play_Sample_Handle");
     if (Any_Locked()) {
         return INVALID_AUDIO_HANDLE;
     }
@@ -1050,7 +1113,9 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
         AUDHeaderType raw_header;
         memcpy(&raw_header, sample, sizeof(raw_header));
 
+        /* Fix endianess issues.  */
         raw_header.Rate = le16toh(raw_header.Rate);
+        raw_header.UncompSize = le32toh(raw_header.UncompSize);
         if (raw_header.Size < 0)
             raw_header.Size = le32toh(raw_header.Size);
 
@@ -1073,6 +1138,7 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
         st->Remainder = raw_header.Size;
         st->Source = Add_Long_To_Pointer(sample, sizeof(AUDHeaderType));
 
+
         // Compression is ADPCM so we need to init it's stream info.
         if (st->Compression == SCOMP_SOS) {
             st->sosinfo.wChannels = (raw_header.Flags & 1) + 1;
@@ -1082,82 +1148,31 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
             sosCODECInitStream(&st->sosinfo);
         }
 
-        // If the loaded sample doesn't match the sample tracker we need to adjust the tracker.
-        if (raw_header.Rate != st->Frequency
-            || /*Get_OpenAL_Format((raw_header.Flags & 2) ? 16 : 8, (raw_header.Flags & 1) ? 2 : 1) != st->Format*/false) {
-            st->Active = false;
-            st->Service = 0;
-            st->MoreSource = false;
+        st->Frequency = raw_header.Rate;
+        st->WaveObj.name = "track";
+        st->WaveObj.bits = raw_header.Flags & 2 ? 16 : 8;
+        st->WaveObj.channels = 1;
+        st->WaveObj.frequency = st->Frequency;
+        st->WaveObj.len = raw_header.UncompSize / (raw_header.Flags & 2 ? 2 : 1);
+        DBG_LOG("wave len = %d", st->WaveObj.len);
+        st->WaveObj.loop_len = 0;
+        st->WaveObj.read = Waveform_Update;
+        st->WaveObj.ctx = (void*) id;
 
-            // Set the new sample info.
-            st->Frequency = raw_header.Rate;
-            //st->Format = Get_OpenAL_Format((raw_header.Flags & 2) ? 16 : 8, (raw_header.Flags & 1) ? 2 : 1);
-        }
 
-        //ALint source_status;
-        //alGetSourcei(st->OpenALSource, AL_SOURCE_STATE, &source_status);
-
-        // If the sample is already playing stop it.
-        if (/*source_status != AL_STOPPED*/ false) {
-            st->Active = false;
-            st->Service = 0;
-            st->MoreSource = false;
-
-            int processed_count = -1;
-            //alSourceStop(st->OpenALSource);
-            //alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed_count);
-
-            while (processed_count-- > 0) {
-                //ALuint tmp;
-                //alSourceUnqueueBuffers(st->OpenALSource, 1, &tmp);
-            }
-
-            //alDeleteBuffers(OPENAL_BUFFER_COUNT, st->AudioBuffers);
-        }
-
-        //alGenBuffers(OPENAL_BUFFER_COUNT, st->AudioBuffers);
-        int buffer_index = 0;
-
-        while (buffer_index < OPENAL_BUFFER_COUNT) {
-
-            int bytes_read = Sample_Copy(st,
-                                         &st->Source,
-                                         &st->Remainder,
-                                         &st->QueueBuffer,
-                                         &st->QueueSize,
-                                         ChunkBuffer,
-                                         BUFFER_CHUNK_SIZE,
-                                         st->Compression,
-                                         nullptr,
-                                         nullptr);
-
-            if (bytes_read > 0) {
-                //alBufferData(st->AudioBuffers[buffer_index++], st->Format, ChunkBuffer, bytes_read, st->Frequency);
-            }
-
-            if (bytes_read == BUFFER_CHUNK_SIZE) {
-                st->MoreSource = true;
-                st->OneShot = false;
-            } else {
-                st->MoreSource = false;
-                st->OneShot = true;
-                break;
-            }
-        }
-
-        //alSourceQueueBuffers(st->OpenALSource, buffer_index, st->AudioBuffers);
-        st->Service = 1;
-
+        st->MoreSource = true;
+        st->OneShot = false;
         st->Volume = volume;
+        st->Service = 1;
+        
+        // Queue play of soundeffect.
+        DBG_LOG("Play queued\n");
+        DBG_LOG("id: %d", id);
+        mixer_ch_play(id, &st->WaveObj);
+        st->Active = 1;
 
-        //alSourcef(st->OpenALSource, AL_GAIN, ((LockedData.SoundVolume * st->Volume) / 256) / 256.0f);
+        return id;
 
-        if (!Start_Primary_Sound_Buffer(false)) {
-            //CCDebugString("Play_Sample_Handle - Can't start primary buffer!");
-            return INVALID_AUDIO_HANDLE;
-        }
-
-        return Attempt_To_Play_Buffer(id);
     }
 
     return INVALID_AUDIO_HANDLE;
@@ -1165,7 +1180,7 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
 
 int Set_Sound_Vol(int volume)
 {
-
+    DBG_LOG("Set_Sound_Vol");
     int oldvol = LockedData.SoundVolume;
     LockedData.SoundVolume = volume;
     return oldvol;
@@ -1173,6 +1188,7 @@ int Set_Sound_Vol(int volume)
 
 int Set_Score_Vol(int volume)
 {
+    DBG_LOG("Set_Score_Vol");
     int old = LockedData.ScoreVolume;
     LockedData.ScoreVolume = volume;
 
@@ -1180,6 +1196,8 @@ int Set_Score_Vol(int volume)
         SampleTrackerType* st = &LockedData.SampleTracker[i];
 
         if (st->IsScore & st->Active) {
+            float vol = (LockedData.ScoreVolume * st->Volume) / 255.f;
+            mixer_ch_set_vol(i, vol, vol);
             //alSourcef(st->OpenALSource, AL_GAIN, ((LockedData.ScoreVolume * st->Volume) / 256) / 256.0f);
         }
     }
@@ -1189,6 +1207,10 @@ int Set_Score_Vol(int volume)
 
 void Fade_Sample(int index, int ticks)
 {
+    Stop_Sample(index);
+    return;
+
+    DBG_LOG("Fade_Sample");
     if (Sample_Status(index)) {
         SampleTrackerType* st = &LockedData.SampleTracker[index];
 
@@ -1202,6 +1224,7 @@ void Fade_Sample(int index, int ticks)
 
 int Get_Free_Sample_Handle(int priority)
 {
+    DBG_LOG("Get_Free_Sample_Handle");
     int index = 0;
 
     for (index = MAX_SAMPLE_TRACKERS - 1; index >= 0; --index) {
@@ -1252,6 +1275,7 @@ int Get_Digi_Handle()
 
 int Sample_Length(const void* sample)
 {
+    DBG_LOG("Sample_Lenght");
     if (sample == nullptr) {
         return 0;
     }
