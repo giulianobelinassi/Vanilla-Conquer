@@ -1878,11 +1878,11 @@ BuildingClass::BuildingClass(StructType type, HousesType house)
         ActLike = HOUSE_GOOD;
         IsCaptured = true;
     }
-
+#if 0
     if (GameToPlay == GAME_INTERNET) {
         House->BuildingTotals.Increment_Unit_Total((int)type);
     }
-
+#endif
 #ifdef USE_RA_AI
     //
     // Added for RA AI in TD. ST - 7/26/2019 9:12AM
@@ -3628,10 +3628,11 @@ bool BuildingClass::Captured(HouseClass* newowner)
         /*
         ** Add this building to the list of buildings captured this game. For internet stats purposes
         */
+#if 0
         if (GameToPlay == GAME_INTERNET) {
             newowner->CapturedBuildings.Increment_Unit_Total(Class->Type);
         }
-
+#endif
         House->Adjust_Power(-Power_Output());
         LastStrength = 0;
         House->Adjust_Drain(-Class->Drain);

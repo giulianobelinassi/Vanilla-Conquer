@@ -30,6 +30,7 @@
 #include "shastraw.h"
 #include "wwstd.h"
 #include "rndstraw.h"
+#include "memflag.h"
 
 #ifndef _WIN32
 #include <libgen.h> // For basename()
@@ -219,7 +220,7 @@ template <class T, class TCRC> MixFileClass<T, TCRC>::~MixFileClass(void)
         free((char*)Filename);
     }
     if (Data != NULL && IsAllocated) {
-        delete[] static_cast<char*>(Data);
+        ::Free(Data);
         IsAllocated = false;
     }
     Data = NULL;
@@ -623,8 +624,8 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
             Data = buffer->Get_Buffer();
         }
     } else {
-        //DataSize = 300000; /* It is requesting 800MB for cclocal... ?!*/
-        Data = new char[DataSize];
+        Data = Alloc(DataSize, MEM_NORMAL);
+        //Data = new char[DataSize];
         IsAllocated = true;
     }
 
@@ -662,7 +663,7 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
         */
         int actual = straw->Get(Data, DataSize);
         if (actual != DataSize) {
-            delete[] Data;
+            ::Free(Data);
             Data = NULL;
             file.Error(EIO);
             return (false);
@@ -679,7 +680,7 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
             sha.Result(digest2);
             fstraw.Get(digest1, sizeof(digest1));
             if (memcmp(digest1, digest2, sizeof(digest1)) != 0) {
-                delete[] Data;
+                ::Free(Data);
                 Data = NULL;
                 return (false);
             }
@@ -711,7 +712,7 @@ template <class T, class TCRC> bool MixFileClass<T, TCRC>::Cache(Buffer const* b
 template <class T, class TCRC> void MixFileClass<T, TCRC>::Free(void)
 {
     if (Data != NULL && IsAllocated) {
-        delete[] Data;
+        ::Free(Data);
     }
     Data = NULL;
     IsAllocated = false;

@@ -24,7 +24,7 @@ static void maybe_initialize_dragonfs()
     if (dfs_initialized)
         return;
 
-    if (dfs_init(0xB1001000) != DFS_ESUCCESS)
+    if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
     {
         volatile int x = ((int) dfs_initialized) / INT_MAX;
         x = 4 / x;

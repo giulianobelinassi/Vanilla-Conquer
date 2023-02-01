@@ -305,6 +305,7 @@ public:
     /*
     ** Stuff to keep track of the total number of units built by this house.
     */
+#if 0
     UnitTrackerClass<AIRCRAFT_COUNT> AircraftTotals;
     UnitTrackerClass<INFANTRY_COUNT> InfantryTotals;
     UnitTrackerClass<UNIT_COUNT> UnitTotals;
@@ -327,7 +328,7 @@ public:
     ** Total number of crates found by this house
     */
     UnitTrackerClass<TOTAL_CRATE_TYPES> TotalCrates;
-
+#endif
     /*
     **	Records the number of infantry and vehicle factories active. This value is
     **	used to regulate the speed of production.

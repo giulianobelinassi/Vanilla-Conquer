@@ -31,6 +31,7 @@ set(CHECKSUM_TOOL       ${LIBDRAGON_PREFIX}/bin/chksum64)
 set(OBJCOPY_TOOL        ${LIBDRAGON_PREFIX}/bin/mips64-elf-objcopy)
 set(ROM_HEADER          ${LIBDRAGON_PREFIX}/lib/header)
 set(MKDFS               ${LIBDRAGON_PREFIX}/bin/mkdfs)
+set(N64SYM              ${LIBDRAGON_PREFIX}/bin/n64sym)
 
 # Set additional link options for N64 linking
 add_link_options(-Tn64.ld -Wl,--gc-sections -Wl,--wrap __do_global_ctors)

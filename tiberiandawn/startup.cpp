@@ -40,6 +40,8 @@
 #include "common/utfargs.h"
 #include "settings.h"
 
+#include <exception>
+
 bool Read_Private_Config_Struct(FileClass& file, NewConfigType* config);
 void Print_Error_End_Exit(char* string);
 void Print_Error_Exit(char* string);
@@ -218,12 +220,18 @@ static void initialize_libdragon()
     //display_init( res, bit, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE );
     //console_set_render_mode(RENDER_AUTOMATIC);
 }
+
+static void terminate_handler(void)
+{
+  debug_backtrace();
+  assert(0);
+}
 #endif
 
 int main(int argc, char** argv)
 {
 #ifdef _N64
-    //initialize_libdragon();
+    std::set_terminate(terminate_handler);
 #endif
     UtfArgs args(argc, argv);
     CCDebugString("C&C95 - Starting up.\n");

@@ -39,6 +39,10 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <malloc.h>
+#ifdef _N64
+#include <n64sys.h>
+#endif
 
 #include "wwmem.h"
 #include "debugstring.h"
@@ -97,6 +101,10 @@ void* Alloc(size_t bytes_to_alloc, MemoryFlagType flags)
 #endif // MEM_CHECK
 
     mem_ptr = malloc(bytes_to_alloc);
+
+    if (!mem_ptr) {
+      DBG_LOG("Malloc returned NULL: %lu bytes requested.", bytes_to_alloc);
+    }
 
     if (!mem_ptr && Memory_Error) {
         Memory_Error();
@@ -220,9 +228,114 @@ void* Resize_Alloc(void* original_ptr, size_t new_size_in_bytes)
  * HISTORY:                                                                *
  *   09/03/1991 JLB : Commented.                                           *
  *=========================================================================*/
-int Ram_Free(MemoryFlagType)
+size_t Ram_Free(MemoryFlagType)
 {
-    return (64 * 1024 * 1024);
+    return Ram_Free();
+}
+
+// Some systems only implements sbrk. So we implement brk  with sbrk.
+#if !defined(__APPLE__) && !defined(__unix__) && !defined(__unix) && !defined(_WIN32) && !defined(_NDS) && !defined (_N64)
+static int brk_(ptrdiff_t a)
+{
+    ptrdiff_t old = (ptrdiff_t)sbrk(0);
+    if (sbrk(a - old) == (void*)-1UL) {
+        return -1;
+    }
+
+    sbrk(old - a);
+    return 0;
+}
+#endif
+
+size_t Ram_Free(void)
+{
+#if defined(__APPLE__)
+    // Someone has to implement this for Mac.
+    return 128 * 1024 * 1024;
+#elif defined(__unix__) || defined(__unix)
+    // Get amount of memory available to program.
+    return sysconf(_SC_AVPHYS_PAGES) * sysconf(_SC_PAGESIZE);
+#elif defined(_WIN32)
+    MEMORYSTATUSEX status;
+    status.dwLength = sizeof(status);
+    GlobalMemoryStatusEx(&status);
+    return status.ullAvailPhys;
+#elif defined(_NDS)
+    struct mallinfo mi = mallinfo();
+    size_t m = mi.fordblks + (getHeapLimit() - getHeapEnd());
+    DBG_LOG("RAM avaliable: %ldkb\n", m / 1024);
+    return m;
+#elif defined(_N64)
+    struct mallinfo mi = mallinfo();
+
+    size_t heap_end = (size_t)HEAP_START_ADDR;
+    size_t heap_top = (size_t)KSEG0_START_ADDR + get_memory_size() - 0x10000;
+    size_t heap_size = heap_top - heap_end;
+    size_t m = (heap_size - mi.arena) + mi.fordblks;
+    DBG_LOG("RAM avaliable: %ldkb\n", m / 1024);
+/*
+           DBG_LOG("Total non-mmapped bytes (arena):       %u", mi.arena);
+           DBG_LOG("# of free chunks (ordblks):            %u", mi.ordblks);
+           DBG_LOG("# of free fastbin blocks (smblks):     %u", mi.smblks);
+           DBG_LOG("# of mapped regions (hblks):           %u", mi.hblks);
+           DBG_LOG("Bytes in mapped regions (hblkhd):      %u", mi.hblkhd);
+           DBG_LOG("Max. total allocated space (usmblks):  %u", mi.usmblks);
+           DBG_LOG("Free bytes held in fastbins (fsmblks): %u", mi.fsmblks);
+           DBG_LOG("Total allocated space (uordblks):      %u", mi.uordblks);
+           DBG_LOG("Total free space (fordblks):           %u", mi.fordblks);
+           DBG_LOG("Topmost releasable block (keepcost):   %u", mi.keepcost);
+*/
+    return m;
+#else
+
+    // Oh dear. We are running in some kind of baremetal machine.
+    //
+    // Assume that available memory is the maximum heap size minus
+    // the current heap position.
+
+    struct mallinfo mi = mallinfo();
+    ptrdiff_t m;
+
+    if (TotalRam == 0) {
+        // Find how much the heap can grow to calculate the maximum RAM
+        // available in the system.
+        ptrdiff_t curr_heap = (ptrdiff_t)sbrk(0);
+
+        ptrdiff_t x1 = curr_heap;
+        ptrdiff_t x0 = curr_heap;
+
+        // Find rightmost element;
+        do {
+            if (brk_(x1) == 0) {
+                x0 = x1;
+                x1 *= 2;
+            } else {
+                break;
+            }
+        } while (1);
+
+        // Binary search a value between x0 and x1;
+        m = (x1 + x0) / 2;
+        while (x0 < m) {
+            if (brk_(m) == 0) {
+                x0 = m;
+            } else {
+                x1 = m;
+            }
+
+            m = (x1 + x0) / 2;
+        }
+
+        brk_(curr_heap);
+
+        // Total RAM is the difference between the top heap address minus
+        // where we were plus what malloc is using.
+        TotalRam = m - curr_heap + mi.uordblks;
+    }
+    m = TotalRam - mi.uordblks;
+    DBG_LOG("RAM avaliable: %ldkb\n", m / 1024);
+    return m;
+#endif
 }
 
 /***************************************************************************

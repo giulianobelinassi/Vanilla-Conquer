@@ -270,6 +270,10 @@ public:
     {
       Surface = surface_alloc(FMT_CI8, w, h);
 
+      if (!Surface.buffer) {
+        DBG_LOG("Not enough memory to allocate 320x200 surface");
+      }
+
       if (flags & GBC_VISIBLE) {
         frontSurface = this;
       }

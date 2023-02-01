@@ -168,6 +168,14 @@ bool Init_Game(int, char*[])
     Set_Shape_Buffer(new unsigned char[SHAPE_BUFFER_SIZE], SHAPE_BUFFER_SIZE);
 
     /*
+    **	Allocate the theater buffer block.
+    */
+    CCDebugString("C&C95 - About to allocate theater buffer\n");
+    TheaterBuffer = new Buffer(THEATER_BUFFER_SIZE);
+    assert(TheaterBuffer != NULL);
+
+
+    /*
     **	Bootstrap enough of the system so that the error dialog box can sucessfully
     **	be displayed.
     */
@@ -540,36 +548,58 @@ bool Init_Game(int, char*[])
     */
     Call_Back();
     //	malloc(3);
+
+    Ram_Free();
+    DBG_LOG("About to allocate map");
     Map.One_Time();
     //	malloc(4);
+    DBG_LOG("About to allocate Logic");
     Logic.One_Time();
     //	malloc(5);
+    DBG_LOG("About to allocate Options");
     Options.One_Time();
 
     //	malloc(6);
 
+    DBG_LOG("About to allocate ObjectType");
     ObjectTypeClass::One_Time();
+    DBG_LOG("About to allocate BuildingType");
     BuildingTypeClass::One_Time();
+    DBG_LOG("About to allocate BulletType");
     BulletTypeClass::One_Time();
+    DBG_LOG("About to allocate HouseType");
     HouseTypeClass::One_Time();
 
+    DBG_LOG("About to allocate TemplateType");
     TemplateTypeClass::One_Time();
+    DBG_LOG("About to allocate OverlayType");
     OverlayTypeClass::One_Time();
+    DBG_LOG("About to allocate SmudgeType");
     SmudgeTypeClass::One_Time();
+    DBG_LOG("About to allocate TerrainType");
     TerrainTypeClass::One_Time();
+    DBG_LOG("About to allocate UnitType");
     UnitTypeClass::One_Time();
 
+    DBG_LOG("About to allocate InfantryType");
     InfantryTypeClass::One_Time();
+    DBG_LOG("About to allocate AnimType");
     AnimTypeClass::One_Time();
+    DBG_LOG("About to allocate AircraftType");
     AircraftTypeClass::One_Time();
+    DBG_LOG("About to allocate HouseClass");
     HouseClass::One_Time();
+
+    DBG_LOG("HeapClasses allocated");
 
     /*
     **	Speech holding tank buffer. Since speech does not mix, it can be placed
     **	into a custom holding tank only as large as the largest speech file to
     **	be played.
     */
+    DBG_LOG("Allocating speech buffer");
     SpeechBuffer = new char[SPEECH_BUFFER_SIZE];
+    DBG_LOG("Speech buffer allocated");
     Call_Back();
 
     /*
@@ -627,6 +657,8 @@ bool Init_Game(int, char*[])
         RuleINI.Save(ini_export, false);
     }
 
+    DBG_LOG("Returning from InitGame");
+
     return (true);
 }
 
@@ -635,6 +667,13 @@ void Uninit_Game(void)
 {
     Map.Free_Cells();
 
+    /*
+    **	Deallocate the theater buffer block.
+    */
+    if (TheaterBuffer) {
+        delete TheaterBuffer;
+        TheaterBuffer = NULL;
+    }
     delete[] SpeechBuffer;
 
     CCFileClass::Clear_Search_Drives();

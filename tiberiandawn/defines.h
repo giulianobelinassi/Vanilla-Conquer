@@ -241,7 +241,14 @@ typedef enum DiffType : unsigned char
 **	changed, be sure to update the makefile and rebuild all of the shape
 **	data files.
 */
-#define SHAPE_BUFFER_SIZE 131072L
+// PG set this to 131072
+#define SHAPE_BUFFER_SIZE 40000L
+
+/**********************************************************************
+**	This is the size of the theater buffer. This buffer is used to load
+**	theater specific assets.  Should match the largest mixfile.
+*/
+#define THEATER_BUFFER_SIZE 680000L
 
 // Use this to allow keep track of versions as they affect saved games.
 #define VERSION_NUMBER 1
@@ -674,7 +681,7 @@ typedef enum VolType : unsigned char
 **	personality and strengths.
 */
 #ifdef __BIG_ENDIAN__
-typedef enum HousesType : signed int
+typedef enum HousesType : signed char//signed int
 #else
 typedef enum HousesType : signed char
 #endif
@@ -1445,7 +1452,7 @@ typedef enum TerrainType : signed char
 **	alterations to the terrin. Craters are a good example of this.
 */
 #ifdef __BIG_ENDIAN__
-typedef enum SmudgeType : signed int
+typedef enum SmudgeType : signed char//signed int
 #else
 typedef enum SmudgeType : signed char
 #endif
@@ -2045,22 +2052,22 @@ inline TextPrintType operator~(TextPrintType a)
 **	maximums never exceed the maximum value for the "ID" element in the
 **	object class.
 */
-#define AIRCRAFT_MAX      100 // Lasts for minutes.
-#define ANIM_MAX          200 // Lasts only a few seconds.
-#define BUILDING_MAX      500 // Lasts for hours.
-#define BULLET_MAX        50  // Lasts several seconds.
-#define FACTORY_MAX       32  // Lasts a few minutes.
-#define HOUSE_MAX         12  // Lasts entire scenario.
-#define INFANTRY_MAX      500 // Lasts for minutes.
+#define AIRCRAFT_MAX      30 // Lasts for minutes.
+#define ANIM_MAX          50 // Lasts only a few seconds.
+#define BUILDING_MAX      300 // Lasts for hours.
+#define BULLET_MAX        40  // Lasts several seconds.
+#define FACTORY_MAX       20  // Lasts a few minutes.
+#define HOUSE_MAX         10  // Lasts entire scenario.
+#define INFANTRY_MAX      300 // Lasts for minutes.
 #define OVERLAY_MAX       1   // Very transitory.
 #define REINFORCEMENT_MAX 50  // Maximum number of reinforcements.
 #define SMUDGE_MAX        1   // Very transitory.
 #define TEAM_MAX          60  // Lasts forever.
 #define TEMPLATE_MAX      1   // Very transitory.
-#define TERRAIN_MAX       500 // Lasts for hours or eternity.
-#define TRIGGER_MAX       80  // Lasts forever.
-#define UNIT_MAX          500 // Lasts for minutes.
-#define TEAMTYPE_MAX      60  // Lasts forever.
+#define TERRAIN_MAX       300 // Lasts for hours or eternity.
+#define TRIGGER_MAX       40  // Lasts forever.
+#define UNIT_MAX          300 // Lasts for minutes.
+#define TEAMTYPE_MAX      40  // Lasts forever.
 
 // Save filename description.
 #define DESCRIP_MAX 44 // 40 chars + CR + LF + CTRL-Z + NULL
@@ -2813,7 +2820,8 @@ typedef enum ModemGameType : unsigned char
 /****************************************************************************
 **	This is the max number of events supported on one frame.
 */
-#define MAX_EVENTS 256
+// PG bumped this to 256
+#define MAX_EVENTS 64
 
 /****************************************************************************
 **	These are the various commands sent over the network's Global Channel.

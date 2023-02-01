@@ -223,6 +223,8 @@ bool GameInFocus = true;
 /***************************************************************************
 **	This holds the theater specific mixfiles.
 */
+Buffer *TheaterBuffer;
+
 MFCD* TheaterData = NULL;
 MFCD* TheaterIcons = NULL;
 MFCD* LowTheaterData;

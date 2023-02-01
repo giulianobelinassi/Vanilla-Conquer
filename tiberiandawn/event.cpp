@@ -43,6 +43,7 @@
  *   EventClass::Execute -- Execute a queued command.                                          *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#include "endianness.h"
 #include "function.h"
 
 /***************************************************************************
@@ -501,6 +502,9 @@ void EventClass::Execute(void)
     */
     case PLACE:
         CCDebugString("C&C95 - Place packet received\n");
+#ifdef __BIG_ENDIAN__
+        Data.Place.Cell = Data.Specific.ID;  // TODO: Find why this hack is required on BE.
+#endif
         Houses.Raw_Ptr(ID)->Place_Object(Data.Place.Type, Data.Place.Cell);
         break;
 

@@ -235,11 +235,19 @@ if(BUILD_VANILLATD)
         )
     endif()
 
-    target_compile_definitions(VanillaTD PUBLIC $<$<CONFIG:Debug>:_DEBUG> ${VANILLA_DEFS} MEGAMAPS)
+    if (N64)
+        target_compile_definitions(VanillaTD PUBLIC $<$<CONFIG:Debug>:_DEBUG> ${VANILLA_DEFS})
+    else()
+        target_compile_definitions(VanillaTD PUBLIC $<$<CONFIG:Debug>:_DEBUG> ${VANILLA_DEFS} MEGAMAPS)
+    endif()
     target_include_directories(VanillaTD PUBLIC ${CMAKE_SOURCE_DIR} .)
     target_link_libraries(VanillaTD commonv ${VANILLA_LIBS} ${STATIC_LIBS})
     set_target_properties(VanillaTD PROPERTIES OUTPUT_NAME vanillatd)
     if (N64)
+      add_custom_command(TARGET VanillaTD
+          POST_BUILD
+          COMMAND ${N64SYM} ARGS ../vanillatd ../vanillatd.sym
+          VERBATIM)
       add_custom_command(TARGET VanillaTD
           POST_BUILD
           COMMAND ${CMAKE_OBJCOPY} ARGS -O binary ../vanillatd ../vanillatd.bin
@@ -250,7 +258,7 @@ if(BUILD_VANILLATD)
           VERBATIM)
       add_custom_command(TARGET VanillaTD
           POST_BUILD
-          COMMAND ${N64_TOOL} ARGS -l 64M -t "${PROJECT_NAME}" -h ${ROM_HEADER} -o ../vanillatd.z64 ../vanillatd.bin -s 16M cdrom.dfs)
+          COMMAND ${N64_TOOL} ARGS -l 48M -t "${PROJECT_NAME}" -h ${ROM_HEADER} --toc -o ../vanillatd.z64 ../vanillatd.bin  --align 8 ../vanillatd.sym --align 16 cdrom.dfs)
       add_custom_command(TARGET VanillaTD
           POST_BUILD
           COMMAND ${CHECKSUM_TOOL} ARGS ../vanillatd.z64)
