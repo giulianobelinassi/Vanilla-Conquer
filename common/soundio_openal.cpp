@@ -9,6 +9,25 @@
 // distributed with this program. You should have received a copy of the
 // GNU General Public License along with permitted additional restrictions
 // with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
+
+/* OpenAL implementation for C&C engine.
+ *
+ * The code here is a bit messy but there are a few places to hilight if you
+ * want to understand how it somewhat works and where to look if you want to
+ * port it to other platforms:
+ *
+ * 1. Audio_Init(): Should take care of system audio initialization, like
+ *    allocating buffers and the sound hardware.
+ * 2. Play_Sample_Handle(): Actually performs the play sample. It will read the
+ *    AUD file header from a buffer, check its size and compression format,
+ *    decompress by calling Sample_Copy, and insert the decompressed chunk
+ *    into the hardware audio system (in this case, OpenAL).
+ * 3. Maintenance_Callback(): Perform any updates the tracker need. That means
+ *    decompressing more chunks from the compressed .AUD and realizing if the
+ *    audio ended.
+ * 4. File_Callback(): Function that is called to update the streamed .AUD that
+ *    is comming from the disk. This happens on musics only.
+ */
 #include "audio.h"
 #include "auduncmp.h"
 #include "file.h"
@@ -25,18 +44,27 @@ enum
     AUD_CHUNK_MAGIC_ID = 0x0000DEAF,
     VOLUME_MIN = 0,
     VOLUME_MAX = 255,
+    // Audio priority of sample. If out of channels, it will remove one audio
+    // playing based on its priority.
     PRIORITY_MIN = 0,
     PRIORITY_MAX = 255,
-    MAX_SAMPLE_TRACKERS = 5, // C&C issue where sounds get cut off is because of the small number of trackers.
-    STREAM_BUFFER_COUNT = 16,
+    // TD issue where sounds get cut off is because of the small number of trackers.
+    MAX_SAMPLE_TRACKERS = 5,
+    // size in bytes resulting of a .AUD decompression. Can be lowered to 4096
+    // without issues.
     BUFFER_CHUNK_SIZE = 8192, // 256 * 32,
+    // Size of the .AUD uncompression buffer. Changing this value result in crashes.
     UNCOMP_BUFFER_SIZE = 2098,
-    BUFFER_TOTAL_BYTES = BUFFER_CHUNK_SIZE * 4, // 32 kb
-    TIMER_DELAY = 25,
-    TIMER_RESOLUTION = 1,
-    TIMER_TARGET_RESOLUTION = 10, // 10-millisecond target resolution
+    // Number of buffers to where cache .AUD that are streamed from disk. Can
+    // be lower as 8 without problems. Less than that causes in random crashes.
+    STREAM_BUFFER_COUNT = 16,
+    // Size of each buffer used by .AUD files that are streamed from disk. Can
+    // match BUFFER_CHUNK_SIZE/2 wihtout problems if you are low in memory.
+    STREAM_BUFFER_SIZE = BUFFER_CHUNK_SIZE + 128,
+    // Administrative constants.
     INVALID_AUDIO_HANDLE = -1,
     INVALID_FILE_HANDLE = -1,
+    // Number of buffers used in openAL.
     OPENAL_BUFFER_COUNT = 2,
 };
 
@@ -83,17 +111,20 @@ struct SampleTrackerType
     int OriginalSize;
 
     /*
-    ** Variable to keep track of the playback rate of this buffer
+    ** Variable to keep track of the playback rate of this buffer.
+    ** Is encoded in OpenAL "Format" variable.
     */
     //int PlaybackRate;
 
     /*
-    ** Variable to keep track of the sample type ( 8 or 16 bit ) of this buffer
+    ** Variable to keep track of the sample type ( 8 or 16 bit ) of this buffer.
+    ** Is encoded in OpenAL "Format" variable.
     */
     //int BitSize;
 
     /*
-    ** Variable to keep track of the stereo ability of this buffer
+    ** Variable to keep track of the stereo ability of this buffer. Is encoded
+    ** in OpenAL "Format" variable.
     */
     //int Stereo;
 
@@ -131,6 +162,7 @@ struct SampleTrackerType
     /*
     **	Streaming control handlers.
     */
+    // Disk callback function. Load more samples in the FileStreamBuffer.
     bool (*Callback)(short id, short* odd, void** buffer, int* size);
     int FilePending;     // Number of buffers already filled ahead.
     int FilePendingSize; // Number of bytes in last filled buffer.
@@ -183,7 +215,7 @@ struct SampleTrackerType
     // The format of the audio stream.
     ALenum Format;
 
-    // The Frequency of the audio stream
+    // The Frequency (Hz) of the audio stream
     int Frequency;
 
     // A set of buffers
@@ -194,10 +226,6 @@ struct LockedDataType
 {
     unsigned int DigiHandle; // = -1;
     bool ServiceSomething;   // = false;
-    unsigned MagicNumber;    // = 0xDEAF;
-    void* UncompBuffer;      // = NULL;
-    int StreamBufferSize;    // = (2*SECONDARY_BUFFER_SIZE)+128;
-    short StreamBufferCount; // = 32;
     SampleTrackerType SampleTracker[MAX_SAMPLE_TRACKERS];
     unsigned SoundVolume;
     unsigned ScoreVolume;
@@ -208,13 +236,13 @@ void (*Audio_Focus_Loss_Function)() = nullptr;
 
 SFX_Type SoundType;
 Sample_Type SampleType;
-void* FileStreamBuffer = nullptr;
+static char FileStreamBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT];
+
 bool StreamLowImpact = false;
 bool StartingFileStream = false;
 bool volatile AudioDone = false;
 ALCcontext* OpenALContext = nullptr;
 extern bool GameInFocus;
-static uint8_t ChunkBuffer[BUFFER_CHUNK_SIZE];
 
 unsigned int SoundTimerHandle;
 
@@ -273,10 +301,6 @@ static void Init_Locked_Data()
 {
     LockedData.DigiHandle = INVALID_AUDIO_HANDLE;
     LockedData.ServiceSomething = false;
-    LockedData.MagicNumber = AUD_CHUNK_MAGIC_ID;
-    LockedData.UncompBuffer = 0;
-    LockedData.StreamBufferSize = BUFFER_CHUNK_SIZE + 128;
-    LockedData.StreamBufferCount = STREAM_BUFFER_COUNT;
     LockedData.SoundVolume = VOLUME_MAX;
     LockedData.ScoreVolume = VOLUME_MAX;
 }
@@ -361,7 +385,7 @@ int Sample_Copy(SampleTrackerType* st,
         }
 
         if (Simple_Copy(source, ssize, alternate, altsize, &mptr, sizeof(magic)) < sizeof(magic)
-            || magic != LockedData.MagicNumber) {
+            || magic != AUD_CHUNK_MAGIC_ID) {
             break;
         }
 
@@ -372,16 +396,17 @@ int Sample_Copy(SampleTrackerType* st,
             }
         } else {
             // Else we need to decompress it.
-            void* uptr = LockedData.UncompBuffer;
+            char uncomp_buffer[UNCOMP_BUFFER_SIZE];
+            void* uptr = (void*)uncomp_buffer;
 
             if (Simple_Copy(source, ssize, alternate, altsize, &uptr, fsize) < fsize) {
                 return datasize;
             }
 
             if (scomp == SCOMP_WESTWOOD) {
-                Audio_Unzap(LockedData.UncompBuffer, dest, dsize);
+                Audio_Unzap(uncomp_buffer, dest, dsize);
             } else {
-                s->lpSource = (char*)LockedData.UncompBuffer;
+                s->lpSource = uncomp_buffer;
                 s->lpDest = (char*)dest;
 
                 sosCODECDecompressData(s, dsize);
@@ -441,31 +466,29 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
     }
 
     if (*buffer == nullptr && st->FilePending) {
-        *buffer =
-            static_cast<char*>(st->FileBuffer) + LockedData.StreamBufferSize * (*odd % LockedData.StreamBufferCount);
+        *buffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (*odd % STREAM_BUFFER_COUNT);
         --st->FilePending;
         ++*odd;
-        *size = st->FilePending == 0 ? st->FilePendingSize : LockedData.StreamBufferSize;
+        *size = st->FilePending == 0 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
     }
 
     Maintenance_Callback();
 
-    int count = StreamLowImpact ? LockedData.StreamBufferCount / 2 : LockedData.StreamBufferCount - 3;
+    int count = StreamLowImpact ? STREAM_BUFFER_COUNT / 2 : STREAM_BUFFER_COUNT - 3;
 
     if (count > st->FilePending && st->FileHandle != INVALID_FILE_HANDLE) {
-        if (LockedData.StreamBufferCount - 2 != st->FilePending) {
+        if (STREAM_BUFFER_COUNT - 2 != st->FilePending) {
             // Fill empty buffers.
-            for (int num_empty_buffers = LockedData.StreamBufferCount - 2 - st->FilePending;
+            for (int num_empty_buffers = STREAM_BUFFER_COUNT - 2 - st->FilePending;
                  num_empty_buffers && st->FileHandle != INVALID_FILE_HANDLE;
                  --num_empty_buffers) {
                 // Buffer to fill with data.
-                void* tofill =
-                    static_cast<char*>(st->FileBuffer)
-                    + LockedData.StreamBufferSize * ((st->FilePending + *odd) % LockedData.StreamBufferCount);
+                void* tofill = static_cast<char*>(st->FileBuffer)
+                               + STREAM_BUFFER_SIZE * ((st->FilePending + *odd) % STREAM_BUFFER_COUNT);
 
-                int psize = Read_File(st->FileHandle, tofill, LockedData.StreamBufferSize);
+                int psize = Read_File(st->FileHandle, tofill, STREAM_BUFFER_SIZE);
 
-                if (psize != LockedData.StreamBufferSize) {
+                if (psize != STREAM_BUFFER_SIZE) {
                     Close_File(st->FileHandle);
                     st->FileHandle = INVALID_FILE_HANDLE;
                 }
@@ -479,11 +502,10 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
         }
 
         if (st->QueueBuffer == nullptr && st->FilePending) {
-            st->QueueBuffer = static_cast<char*>(st->FileBuffer)
-                              + LockedData.StreamBufferSize * (st->Odd % LockedData.StreamBufferCount);
+            st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
             --st->FilePending;
             ++st->Odd;
-            st->QueueSize = st->FilePending > 0 ? LockedData.StreamBufferSize : st->FilePendingSize;
+            st->QueueSize = st->FilePending > 0 ? STREAM_BUFFER_SIZE : st->FilePendingSize;
         }
 
         Maintenance_Callback();
@@ -499,32 +521,31 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
 void File_Stream_Preload(int index)
 {
     SampleTrackerType* st = &LockedData.SampleTracker[index];
-    int maxnum = (LockedData.StreamBufferCount / 2) + 4;
+    int maxnum = (STREAM_BUFFER_COUNT / 2) + 4;
     int num = st->Loading ? std::min<int>(st->FilePending + 2, maxnum) : maxnum;
 
     int i = 0;
 
     for (i = st->FilePending; i < num; ++i) {
-        int size = Read_File(st->FileHandle,
-                             static_cast<char*>(st->FileBuffer) + i * LockedData.StreamBufferSize,
-                             LockedData.StreamBufferSize);
+        int size =
+            Read_File(st->FileHandle, static_cast<char*>(st->FileBuffer) + i * STREAM_BUFFER_SIZE, STREAM_BUFFER_SIZE);
 
         if (size > 0) {
             st->FilePendingSize = size;
             ++st->FilePending;
         }
 
-        if (size < LockedData.StreamBufferSize) {
+        if (size < STREAM_BUFFER_SIZE) {
             break;
         }
     }
 
     Maintenance_Callback();
 
-    if (LockedData.StreamBufferSize > st->FilePendingSize || i == maxnum) {
+    if (STREAM_BUFFER_SIZE > st->FilePendingSize || i == maxnum) {
         int old_vol = LockedData.SoundVolume;
 
-        int stream_size = st->FilePending == 1 ? st->FilePendingSize : LockedData.StreamBufferSize;
+        int stream_size = st->FilePending == 1 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
 
         LockedData.SoundVolume = LockedData.ScoreVolume;
         StartingFileStream = true;
@@ -547,13 +568,13 @@ void File_Stream_Preload(int index)
             st->Odd = 2;
             --st->FilePending;
 
-            if (st->FilePendingSize != LockedData.StreamBufferSize) {
+            if (st->FilePendingSize != STREAM_BUFFER_SIZE) {
                 Close_File(st->FileHandle);
                 st->FileHandle = INVALID_FILE_HANDLE;
             }
 
-            st->QueueBuffer = static_cast<char*>(st->FileBuffer) + LockedData.StreamBufferSize;
-            st->QueueSize = st->FilePending == 0 ? st->FilePendingSize : LockedData.StreamBufferSize;
+            st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE;
+            st->QueueSize = st->FilePending == 0 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
         }
     }
 }
@@ -564,16 +585,8 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
         return INVALID_AUDIO_HANDLE;
     }
 
-    if (FileStreamBuffer == nullptr) {
-        FileStreamBuffer = malloc((unsigned int)(LockedData.StreamBufferSize * LockedData.StreamBufferCount));
-
-        for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
-            LockedData.SampleTracker[i].FileBuffer = FileStreamBuffer;
-        }
-    }
-
-    if (FileStreamBuffer == nullptr) {
-        return INVALID_AUDIO_HANDLE;
+    for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
+        LockedData.SampleTracker[i].FileBuffer = (void*)FileStreamBuffer;
     }
 
     int fh = Open_File(filename, 1);
@@ -599,6 +612,7 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
     return INVALID_AUDIO_HANDLE;
 };
 
+/* Look into all trackers and see if it needs to update the file stream buffers.  */
 void Sound_Callback()
 {
     if (!AudioDone && LockedData.DigiHandle != INVALID_AUDIO_HANDLE) {
@@ -636,7 +650,7 @@ void Sound_Callback()
 
             // Process pending files.
             if (st->QueueBuffer == nullptr
-                || st->FileHandle != INVALID_FILE_HANDLE && LockedData.StreamBufferCount - 3 > st->FilePending) {
+                || st->FileHandle != INVALID_FILE_HANDLE && STREAM_BUFFER_COUNT - 3 > st->FilePending) {
                 if (st->Callback != nullptr) {
                     if (!st->Callback(i, &st->Odd, &st->QueueBuffer, &st->QueueSize)) {
                         // No files are pending so pending file callback not needed anymore.
@@ -651,101 +665,115 @@ void Sound_Callback()
     }
 };
 
+static void Maintenance_Single_Track(int track)
+{
+    SampleTrackerType* st = &LockedData.SampleTracker[track];
+
+    if (!st->Active) {
+        // If tracker is not enabled then there is no point in updating it.
+        return;
+    }
+
+    if (st->Service) {
+        // Do we have more data in this tracker to play?
+        if (st->MoreSource) {
+            uint8_t chunk_buffer[BUFFER_CHUNK_SIZE];
+            ALint processed_buffers;
+
+            // Work out if we have any space to buffer more data right now.
+            alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed_buffers);
+
+            while (processed_buffers > 0 && st->MoreSource) {
+                int bytes_copied = Sample_Copy(st,
+                                               &st->Source,
+                                               &st->Remainder,
+                                               &st->QueueBuffer,
+                                               &st->QueueSize,
+                                               chunk_buffer,
+                                               BUFFER_CHUNK_SIZE,
+                                               st->Compression,
+                                               nullptr,
+                                               nullptr);
+
+                if (bytes_copied != BUFFER_CHUNK_SIZE) {
+                    st->MoreSource = false;
+                }
+
+                if (bytes_copied > 0) {
+                    ALuint buffer;
+                    alSourceUnqueueBuffers(st->OpenALSource, 1, &buffer);
+                    alBufferData(buffer, st->Format, chunk_buffer, bytes_copied, st->Frequency);
+                    alSourceQueueBuffers(st->OpenALSource, 1, &buffer);
+                    --processed_buffers;
+                }
+            }
+        } else {
+            ALint source_status;
+            alGetSourcei(st->OpenALSource, AL_SOURCE_STATE, &source_status);
+
+            if (source_status != AL_PLAYING) {
+                st->Service = 0;
+                Stop_Sample(track);
+            }
+        }
+    }
+
+    if (!st->QueueBuffer && st->FilePending != 0) {
+        st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
+        --st->FilePending;
+        ++st->Odd;
+
+        if (st->FilePending != 0) {
+            st->QueueSize = STREAM_BUFFER_SIZE;
+        } else {
+            st->QueueSize = st->FilePendingSize;
+        }
+    }
+}
+
+static void Maintenance_Volume(void)
+{
+    // If the volume lock was acquired by someone else then quickly return.
+    if (LockedData.VolumeLock != 0) {
+        return;
+    }
+
+    // Perform any volume modifications that need to be made.
+    // Begin critical section:
+    ++LockedData.VolumeLock;
+
+    for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
+        SampleTrackerType* st = &LockedData.SampleTracker[i];
+        if (st->Active && st->Reducer > 0 && st->Volume > 0) {
+            if (st->Reducer >= st->Volume) {
+                st->Volume = VOLUME_MIN;
+            } else {
+                st->Volume -= st->Reducer;
+            }
+
+            if (!st->IsScore) {
+                alSourcef(st->OpenALSource, AL_GAIN, ((LockedData.SoundVolume * st->Volume) / 256) / 256.0f);
+            } else {
+                alSourcef(st->OpenALSource, AL_GAIN, ((LockedData.ScoreVolume * st->Volume) / 256) / 256.0f);
+            }
+        }
+    }
+
+    --LockedData.VolumeLock;
+    // End critical section:
+}
+
 void Maintenance_Callback()
 {
     if (AudioDone) {
         return;
     }
 
-    SampleTrackerType* st = LockedData.SampleTracker;
-
     for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
-        if (st->Active) { // If this tracker needs processing and isn't already marked as being processed, then process it.
-            if (st->Service) {
-                // Do we have more data in this tracker to play?
-                if (st->MoreSource) {
-                    ALint processed_buffers;
-
-                    // Work out if we have any space to buffer more data right now.
-                    alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed_buffers);
-
-                    while (processed_buffers > 0 && st->MoreSource) {
-                        int bytes_copied = Sample_Copy(st,
-                                                       &st->Source,
-                                                       &st->Remainder,
-                                                       &st->QueueBuffer,
-                                                       &st->QueueSize,
-                                                       ChunkBuffer,
-                                                       BUFFER_CHUNK_SIZE,
-                                                       st->Compression,
-                                                       nullptr,
-                                                       nullptr);
-
-                        if (bytes_copied != BUFFER_CHUNK_SIZE) {
-                            st->MoreSource = false;
-                        }
-
-                        if (bytes_copied > 0) {
-                            ALuint buffer;
-                            alSourceUnqueueBuffers(st->OpenALSource, 1, &buffer);
-                            alBufferData(buffer, st->Format, ChunkBuffer, bytes_copied, st->Frequency);
-                            alSourceQueueBuffers(st->OpenALSource, 1, &buffer);
-                            --processed_buffers;
-                        }
-                    }
-                } else {
-                    ALint source_status;
-                    alGetSourcei(st->OpenALSource, AL_SOURCE_STATE, &source_status);
-
-                    if (source_status != AL_PLAYING) {
-                        st->Service = 0;
-                        Stop_Sample(i);
-                    }
-                }
-            }
-
-            if (!st->QueueBuffer && st->FilePending != 0) {
-                st->QueueBuffer = static_cast<char*>(st->FileBuffer)
-                                  + LockedData.StreamBufferSize * (st->Odd % LockedData.StreamBufferCount);
-                --st->FilePending;
-                ++st->Odd;
-
-                if (st->FilePending != 0) {
-                    st->QueueSize = LockedData.StreamBufferSize;
-                } else {
-                    st->QueueSize = st->FilePendingSize;
-                }
-            }
-        }
-
-        ++st;
+        Maintenance_Single_Track(i);
     }
 
-    // Perform any volume modifications that need to be made.
-    if (LockedData.VolumeLock == 0) {
-        ++LockedData.VolumeLock;
-        st = LockedData.SampleTracker;
-
-        for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
-            if (st->Active && st->Reducer > 0 && st->Volume > 0) {
-                if (st->Reducer >= st->Volume) {
-                    st->Volume = VOLUME_MIN;
-                } else {
-                    st->Volume -= st->Reducer;
-                }
-
-                if (!st->IsScore) {
-                    alSourcef(st->OpenALSource, AL_GAIN, ((LockedData.SoundVolume * st->Volume) / 256) / 256.0f);
-                } else {
-                    alSourcef(st->OpenALSource, AL_GAIN, ((LockedData.ScoreVolume * st->Volume) / 256) / 256.0f);
-                }
-            }
-
-            ++st;
-        }
-
-        --LockedData.VolumeLock;
-    }
+    Maintenance_Volume();
 };
 
 void* Load_Sample(char const* filename)
@@ -837,13 +865,6 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
 
     LockedData.DigiHandle = 1;
 
-    LockedData.UncompBuffer = malloc(UNCOMP_BUFFER_SIZE);
-
-    if (LockedData.UncompBuffer == nullptr) {
-        //CCDebugString("Audio_Init - Failed to allocate UncompBuffer.");
-        return false;
-    }
-
     // Create placback buffers for all trackers.
     for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
         SampleTrackerType* st = &LockedData.SampleTracker[i];
@@ -883,21 +904,11 @@ void Sound_End()
         }
     }
 
-    if (FileStreamBuffer != nullptr) {
-        free((void*)FileStreamBuffer);
-        FileStreamBuffer = nullptr;
-    }
-
     ALCdevice* device = alcGetContextsDevice(OpenALContext);
 
     alcMakeContextCurrent(nullptr);
     alcDestroyContext(OpenALContext);
     alcCloseDevice(device);
-
-    if (LockedData.UncompBuffer != nullptr) {
-        free((void*)LockedData.UncompBuffer);
-        LockedData.UncompBuffer = nullptr;
-    }
 
     AudioDone = true;
 };
@@ -1099,6 +1110,7 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
 
         alGenBuffers(OPENAL_BUFFER_COUNT, st->AudioBuffers);
         int buffer_index = 0;
+        uint8_t chunk_buffer[BUFFER_CHUNK_SIZE];
 
         while (buffer_index < OPENAL_BUFFER_COUNT) {
 
@@ -1107,14 +1119,14 @@ int Play_Sample_Handle(const void* sample, int priority, int volume, signed shor
                                          &st->Remainder,
                                          &st->QueueBuffer,
                                          &st->QueueSize,
-                                         ChunkBuffer,
+                                         chunk_buffer,
                                          BUFFER_CHUNK_SIZE,
                                          st->Compression,
                                          nullptr,
                                          nullptr);
 
             if (bytes_read > 0) {
-                alBufferData(st->AudioBuffers[buffer_index++], st->Format, ChunkBuffer, bytes_read, st->Frequency);
+                alBufferData(st->AudioBuffers[buffer_index++], st->Format, chunk_buffer, bytes_read, st->Frequency);
             }
 
             if (bytes_read == BUFFER_CHUNK_SIZE) {
