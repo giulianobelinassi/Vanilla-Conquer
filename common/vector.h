@@ -941,10 +941,8 @@ template <class T> int VectorClass<T>::Resize(unsigned newsize, T const* array)
         */
         T* newptr;
         if (!array) {
-            DBG_LOG("Creating array of size = %u", newsize * sizeof(T));
             newptr = new T[newsize];
         } else {
-            DBG_LOG("Reallocating array with size = %u", newsize * sizeof(T));
             newptr = new ((void*)array) T[newsize];
         }
         if (!newptr) {

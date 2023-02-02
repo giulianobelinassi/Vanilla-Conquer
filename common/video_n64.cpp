@@ -90,10 +90,22 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     controller_init();
     timer_init();
 
-    if (w == 320) {
-      display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
-    } else {
-      display_init(RESOLUTION_640x480, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+    switch (w) {
+      case 320:
+        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+      break;
+
+      case 512:
+        display_init(RESOLUTION_512x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+      break;
+
+      case 640:
+        display_init(RESOLUTION_640x480, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+      break;
+
+      default:
+        DBG_LOG("Video mode not supported");
+        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
     }
 
     register_VI_handler(Timer_VBlank);

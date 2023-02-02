@@ -44,6 +44,8 @@
 #include <n64sys.h>
 #endif
 
+#include <unistd.h>
+
 #include "wwmem.h"
 #include "debugstring.h"
 

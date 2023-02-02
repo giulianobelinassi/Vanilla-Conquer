@@ -88,7 +88,12 @@ if(NOT MSVC)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
         set(STATIC_LIBS "-static-libstdc++ -static-libgcc")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG "-g -O2 -march=vr4300 -mtune=vr4300")
+
+        if(N64)
+          set(CMAKE_CXX_FLAGS_DEBUG "-g -O2 -march=vr4300 -mtune=vr4300")
+        else()
+          set(CMAKE_CXX_FLAGS_DEBUG "-g -O2")
+        endif()
         set(CMAKE_FIND_FRAMEWORK "LAST")
     endif()
 

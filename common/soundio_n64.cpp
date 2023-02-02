@@ -719,6 +719,8 @@ bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channel
         mixer_ch_set_limits(i, 16, 24000, BUFFER_CHUNK_SIZE * 2);
     }
 
+    mixer_set_vol(0.5f);
+
     SoundType = SFX_ALFX;
     SampleType = SAMPLE_SB;
     AudioDone = false;
