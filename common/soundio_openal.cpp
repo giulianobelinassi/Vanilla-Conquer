@@ -38,6 +38,10 @@
 #include <alc.h>
 #include <algorithm>
 #include <stdlib.h>
+#include <assert.h>
+#include "ccfile.h"
+
+typedef MixFileClass<CCFileClass> MFCD;
 
 enum
 {
@@ -59,7 +63,7 @@ enum
     // be lower as 8 without problems. Less than that causes in random crashes.
     STREAM_BUFFER_COUNT = 16,
     // Size of each buffer used by .AUD files that are streamed from disk. Can
-    // match BUFFER_CHUNK_SIZE/2 wihtout problems if you are low in memory.
+    // match 2048 wihtout problems if you are low in memory.
     STREAM_BUFFER_SIZE = BUFFER_CHUNK_SIZE + 128,
     // Administrative constants.
     INVALID_AUDIO_HANDLE = -1,
@@ -67,6 +71,8 @@ enum
     // Number of buffers used in openAL.
     OPENAL_BUFFER_COUNT = 2,
 };
+
+#define IS_HANDLE_VALID(x) (((unsigned) x) < MAX_SAMPLE_TRACKERS)
 
 /*
 ** Define the different type of sound compression avaliable to the westwood
@@ -171,13 +177,6 @@ struct SampleTrackerType
     int QueueSize;       // Size of queue buffer attached.
 
     /*
-    **	The file variables are used when streaming directly off of the
-    **	hard drive.
-    */
-    int FileHandle; // Streaming file handle (INVALID_FILE_HANDLE = not in use).
-    void* FileBuffer;
-
-    /*
     ** The following structure is used if the sample if compressed using
     ** the sos 16 bit compression Codec.
     */
@@ -218,6 +217,13 @@ struct SampleTrackerType
     // The Frequency (Hz) of the audio stream
     int Frequency;
 
+    /*
+    **	The file variables are used when streaming directly off of the
+    **	hard drive.
+    */
+    int FileHandle; // Streaming file handle (INVALID_FILE_HANDLE = not in use).
+    char FileBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT];
+
     // A set of buffers
     ALuint AudioBuffers[OPENAL_BUFFER_COUNT];
 };
@@ -236,7 +242,6 @@ void (*Audio_Focus_Loss_Function)() = nullptr;
 
 SFX_Type SoundType;
 Sample_Type SampleType;
-static char FileStreamBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT];
 
 bool StreamLowImpact = false;
 bool StartingFileStream = false;
@@ -433,12 +438,14 @@ int Stream_Sample_Vol(void* buffer, int size, bool (*callback)(short, short*, vo
         return INVALID_AUDIO_HANDLE;
     }
 
+    SampleTrackerType* st = &LockedData.SampleTracker[handle];
+
     AUDHeaderType header;
     memcpy(&header, buffer, sizeof(header));
     int oldsize = header.Size;
     header.Size = size - sizeof(header);
     memcpy(buffer, &header, sizeof(header));
-    int playid = Play_Sample_Handle(buffer, PRIORITY_MAX, volume, 0, handle);
+    int playid = Play_Sample_Handle(buffer, st->Priority, volume, 0, handle);
     header.Size = oldsize;
     memcpy(buffer, &header, sizeof(header));
 
@@ -446,7 +453,6 @@ int Stream_Sample_Vol(void* buffer, int size, bool (*callback)(short, short*, vo
         return INVALID_AUDIO_HANDLE;
     }
 
-    SampleTrackerType* st = &LockedData.SampleTracker[playid];
     st->Callback = callback;
     st->Odd = 0;
 
@@ -461,12 +467,8 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
 
     SampleTrackerType* st = &LockedData.SampleTracker[id];
 
-    if (st->FileBuffer == nullptr) {
-        return false;
-    }
-
     if (*buffer == nullptr && st->FilePending) {
-        *buffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (*odd % STREAM_BUFFER_COUNT);
+        *buffer = st->FileBuffer + STREAM_BUFFER_SIZE * (*odd % STREAM_BUFFER_COUNT);
         --st->FilePending;
         ++*odd;
         *size = st->FilePending == 0 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
@@ -483,7 +485,7 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
                  num_empty_buffers && st->FileHandle != INVALID_FILE_HANDLE;
                  --num_empty_buffers) {
                 // Buffer to fill with data.
-                void* tofill = static_cast<char*>(st->FileBuffer)
+                void* tofill = st->FileBuffer
                                + STREAM_BUFFER_SIZE * ((st->FilePending + *odd) % STREAM_BUFFER_COUNT);
 
                 int psize = Read_File(st->FileHandle, tofill, STREAM_BUFFER_SIZE);
@@ -502,7 +504,7 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
         }
 
         if (st->QueueBuffer == nullptr && st->FilePending) {
-            st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
+            st->QueueBuffer = st->FileBuffer + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
             --st->FilePending;
             ++st->Odd;
             st->QueueSize = st->FilePending > 0 ? STREAM_BUFFER_SIZE : st->FilePendingSize;
@@ -528,7 +530,7 @@ void File_Stream_Preload(int index)
 
     for (i = st->FilePending; i < num; ++i) {
         int size =
-            Read_File(st->FileHandle, static_cast<char*>(st->FileBuffer) + i * STREAM_BUFFER_SIZE, STREAM_BUFFER_SIZE);
+            Read_File(st->FileHandle, st->FileBuffer + i * STREAM_BUFFER_SIZE, STREAM_BUFFER_SIZE);
 
         if (size > 0) {
             st->FilePendingSize = size;
@@ -539,8 +541,6 @@ void File_Stream_Preload(int index)
             break;
         }
     }
-
-    Maintenance_Callback();
 
     if (STREAM_BUFFER_SIZE > st->FilePendingSize || i == maxnum) {
         int old_vol = LockedData.SoundVolume;
@@ -573,20 +573,16 @@ void File_Stream_Preload(int index)
                 st->FileHandle = INVALID_FILE_HANDLE;
             }
 
-            st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE;
+            st->QueueBuffer = st->FileBuffer + STREAM_BUFFER_SIZE;
             st->QueueSize = st->FilePending == 0 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
         }
     }
 }
 
-int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_start)
+static int File_Stream_Sample_Generic(const char *filename, int volume, int priority, short panloc, bool is_score, bool real_time_start)
 {
     if (LockedData.DigiHandle == INVALID_AUDIO_HANDLE || filename == nullptr || !Find_File(filename)) {
         return INVALID_AUDIO_HANDLE;
-    }
-
-    for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
-        LockedData.SampleTracker[i].FileBuffer = (void*)FileStreamBuffer;
     }
 
     int fh = Open_File(filename, 1);
@@ -595,11 +591,12 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
         return INVALID_AUDIO_HANDLE;
     }
 
-    int handle = Get_Free_Sample_Handle(PRIORITY_MAX);
+    int handle = Get_Free_Sample_Handle(priority);
 
-    if (handle < MAX_SAMPLE_TRACKERS) {
+    if (IS_HANDLE_VALID(handle)) {
         SampleTrackerType* st = &LockedData.SampleTracker[handle];
-        st->IsScore = true;
+        st->Priority = priority;
+        st->IsScore = is_score;
         st->FilePending = 0;
         st->FilePendingSize = 0;
         st->Loading = real_time_start;
@@ -609,8 +606,27 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
         return handle;
     }
 
+    Close_File(fh);
     return INVALID_AUDIO_HANDLE;
+
+}
+
+int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_start)
+{
+    return File_Stream_Sample_Generic(filename, volume, PRIORITY_MAX, 0, true, real_time_start);
 };
+
+int Play_Sample_Streamed(const char *filename, int priority, int vol, short panloc)
+{
+    void const* sample = MFCD::Retrieve(filename);
+    if (sample) {
+        /* If file is cached, then there is no point in streaming stuff.  */
+        return Play_Sample(sample, priority, vol, panloc);
+    } else {
+        /* Stream the sample from disk.  */
+        return File_Stream_Sample_Generic(filename, vol, priority, panloc, false, true);
+    }
+}
 
 /* Look into all trackers and see if it needs to update the file stream buffers.  */
 void Sound_Callback()
@@ -719,7 +735,7 @@ static void Maintenance_Single_Track(int track)
     }
 
     if (!st->QueueBuffer && st->FilePending != 0) {
-        st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
+        st->QueueBuffer = st->FileBuffer + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
         --st->FilePending;
         ++st->Odd;
 
@@ -778,68 +794,25 @@ void Maintenance_Callback()
 
 void* Load_Sample(char const* filename)
 {
-    if (LockedData.DigiHandle == INVALID_AUDIO_HANDLE || filename == nullptr || !Find_File(filename)) {
-        return nullptr;
-    }
-
-    void* data = nullptr;
-    int handle = Open_File(filename, 1);
-
-    if (handle != INVALID_FILE_HANDLE) {
-        int data_size = File_Size(handle) + sizeof(AUDHeaderType);
-        data = malloc(data_size);
-
-        if (data != nullptr) {
-            Sample_Read(handle, data, data_size);
-        }
-
-        Close_File(handle);
-        Misc = data_size;
-    }
-
-    return data;
+    assert(false);
+    return nullptr;
 };
 
 int Load_Sample_Into_Buffer(char const* filename, void* buffer, int size)
 {
-    if (buffer == nullptr || size == 0 || LockedData.DigiHandle == INVALID_AUDIO_HANDLE || !filename
-        || !Find_File(filename)) {
-        return 0;
-    }
-
-    int handle = Open_File(filename, 1);
-
-    if (handle == INVALID_FILE_HANDLE) {
-        return 0;
-    }
-
-    int sample_size = Sample_Read(handle, buffer, size);
-    Close_File(handle);
-    return sample_size;
+    assert(false);
+    return -1;
 }
 
 int Sample_Read(int fh, void* buffer, int size)
 {
-    if (buffer == nullptr || fh == INVALID_AUDIO_HANDLE || size <= sizeof(AUDHeaderType)) {
-        return 0;
-    }
-
-    AUDHeaderType header;
-    int actual_bytes_read = Read_File(fh, &header, sizeof(AUDHeaderType));
-    int to_read = std::min<unsigned>(size - sizeof(AUDHeaderType), header.Size);
-
-    actual_bytes_read += Read_File(fh, static_cast<char*>(buffer) + sizeof(AUDHeaderType), to_read);
-
-    memcpy(buffer, &header, sizeof(AUDHeaderType));
-
-    return actual_bytes_read;
+    assert(false);
+    return -1;
 };
 
 void Free_Sample(const void* sample)
 {
-    if (sample != nullptr) {
-        free((void*)sample);
-    }
+    assert(false);
 };
 
 bool Audio_Init(int bits_per_sample, bool stereo, int rate, bool reverse_channels)

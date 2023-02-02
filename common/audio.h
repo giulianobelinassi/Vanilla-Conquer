@@ -134,6 +134,7 @@ bool Is_Sample_Playing(void const* sample);
 void Stop_Sample_Playing(void const* sample);
 int Play_Sample(void const* sample, int priority = 0xFF, int volume = 0xFF, signed short panloc = 0x0);
 int Play_Sample_Handle(void const* sample, int priority, int volume, signed short panloc, int id);
+int Play_Sample_Streamed(const char *fname, int priority, int vol = 0xFF, short panloc = 0);
 int Set_Sound_Vol(int volume);
 int Set_Score_Vol(int volume);
 void Fade_Sample(int handle, int ticks);

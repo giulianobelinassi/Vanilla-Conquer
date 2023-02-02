@@ -88,7 +88,7 @@ void Animate_Score_Objs(void);
 void Cycle_Wait_Click(void);
 int ScorePass;
 
-void const* Beepy6;
+static const char* Beepy6;
 int ControlQ; // cheat key to skip past score/mapsel screens
 bool StillUpdating;
 
@@ -234,8 +234,8 @@ ScoreCredsClass::ScoreCredsClass(int xpos, int ypos, void const* data, int max, 
     Stage = 0;
     MaxStage = max;
     TimerReset = timer;
-    Clock1 = MFCD::Retrieve("CLOCK1.AUD");
-    CashTurn = MFCD::Retrieve("CASHTURN.AUD");
+    Clock1 = "CLOCK1.AUD";
+    CashTurn = "CASHTURN.AUD";
 }
 
 void ScoreCredsClass::Update(void)
@@ -248,10 +248,10 @@ void ScoreCredsClass::Update(void)
         oldpage = LogicPage;
         Set_Logic_Page(PseudoSeenBuff);
         if (Stage < 22) {
-            Play_Sample(Clock1, 255, Options.Normalize_Sound(70));
+            Play_Sample_Streamed(Clock1, 255, Options.Normalize_Sound(70));
         } else {
             if (Stage == 24) {
-                Play_Sample(CashTurn, 255, Options.Normalize_Sound(70));
+                Play_Sample_Streamed(CashTurn, 255, Options.Normalize_Sound(70));
             }
         }
         CC_Draw_Shape(DataPtr, Stage, XPos, YPos, WINDOW_MAIN, SHAPE_WIN_REL, 0, 0);
@@ -646,9 +646,9 @@ void ScoreClass::Presentation(void)
 
     Set_Logic_Page(SysMemPage);
 
-    void const* country4 = MFCD::Retrieve("COUNTRY4.AUD");
-    void const* sfx4 = MFCD::Retrieve("SFX4.AUD");
-    Beepy6 = MFCD::Retrieve("BEEPY6.AUD");
+    const char* country4 = "COUNTRY4.AUD";
+    const char* sfx4 = "SFX4.AUD";
+    Beepy6 = "BEEPY6.AUD";
 
     /*
     ** Load the background for the score screen
@@ -739,7 +739,7 @@ void ScoreClass::Presentation(void)
     Interpolate_2X_Scale(PseudoSeenBuff, &SeenBuff, inter_pal, Settings.Video.InterpolationMode);
     Fade_Palette_To(Palette, FADE_PALETTE_FAST, Call_Back);
 
-    Play_Sample(country4, 255, Options.Normalize_Sound(90));
+    Play_Sample_Streamed(country4, 255, Options.Normalize_Sound(90));
 
     int frame = 1;
     StreamLowImpact = true;
@@ -787,7 +787,7 @@ void ScoreClass::Presentation(void)
     Alloc_Object(new ScorePrintClass(TXT_SCORE_LEAD, 182, 26, _greenpal));
     Alloc_Object(new ScorePrintClass(TXT_SCORE_EFFI, 182, 38, _greenpal));
     Alloc_Object(new ScorePrintClass(TXT_SCORE_TOTA, 182, 50, _greenpal));
-    Play_Sample(sfx4, 255, Options.Normalize_Sound(120));
+    Play_Sample_Streamed(sfx4, 255, Options.Normalize_Sound(120));
     Call_Back_Delay(13);
 
     max = MAX((int)leadership, (int)efficiency);
@@ -810,7 +810,7 @@ void ScoreClass::Presentation(void)
         }
         Print_Minutes(minutes);
         Call_Back_Delay(1);
-        Play_Sample(Beepy6, 255, Options.Normalize_Sound(60));
+        Play_Sample_Streamed(Beepy6, 255, Options.Normalize_Sound(60));
         if (Keyboard->Check() && i < (max - 5)) {
             i = 158;
             Keyboard->Clear();
@@ -829,7 +829,7 @@ void ScoreClass::Presentation(void)
     ** Show stats on # of units killed
     */
     Set_Logic_Page(*PseudoSeenBuff);
-    Play_Sample(sfx4, 255, Options.Normalize_Sound(90));
+    Play_Sample_Streamed(sfx4, 255, Options.Normalize_Sound(90));
     Alloc_Object(new ScorePrintClass(TXT_SCORE_CASU, _casuax[house], _casuay[house], _redpal));
     Call_Back_Delay(9);
     if (house == HOUSE_BAD) {
@@ -853,7 +853,7 @@ void ScoreClass::Presentation(void)
     /*
     ** Print out stats on buildings destroyed
     */
-    Play_Sample(sfx4, 255, Options.Normalize_Sound(90));
+    Play_Sample_Streamed(sfx4, 255, Options.Normalize_Sound(90));
     if (house == HOUSE_GOOD) {
         Alloc_Object(new ScorePrintClass(TXT_SCORE_BUIL, 144, 126, _greenpal));
         Call_Back_Delay(9);
@@ -890,7 +890,7 @@ void ScoreClass::Presentation(void)
     /*
     ** Hall of fame display and processing
     */
-    Play_Sample(sfx4, 255, Options.Normalize_Sound(90));
+    Play_Sample_Streamed(sfx4, 255, Options.Normalize_Sound(90));
     Alloc_Object(new ScorePrintClass(TXT_SCORE_TOP, 28, 110, _bluepal));
     Call_Back_Delay(9);
 
@@ -1218,7 +1218,7 @@ void ScoreClass::Do_Nod_Buildings_Graph(void)
         Count_Up_Print("%d", q, NBKilled, BUILDING_X + 8, BUILDING_Y + 12);
         Count_Up_Print("%d", q, CBKilled, BUILDING_X + 8, BUILDING_Y + 24);
         if (!Keyboard->Check()) {
-            Play_Sample(Beepy6, 255, Options.Normalize_Sound(110));
+            Play_Sample_Streamed(Beepy6, 255, Options.Normalize_Sound(110));
             Call_Back_Delay(1);
         }
     }
@@ -1277,7 +1277,7 @@ void ScoreClass::Do_GDI_Graph(void const* yellowptr, void const* redptr, int gki
 
         Count_Up_Print("%d", (i * gkilled) / max, gkilled, 297, ypos + 2);
         if (!Keyboard->Check()) {
-            Play_Sample(Beepy6, 255, Options.Normalize_Sound(110));
+            Play_Sample_Streamed(Beepy6, 255, Options.Normalize_Sound(110));
             Call_Back_Delay(2);
         }
     }
@@ -1296,7 +1296,7 @@ void ScoreClass::Do_GDI_Graph(void const* yellowptr, void const* redptr, int gki
 
         Count_Up_Print("%d", (i * nkilled) / max, nkilled, 297, ypos + 14);
         if (!Keyboard->Check()) {
-            Play_Sample(Beepy6, 255, Options.Normalize_Sound(110));
+            Play_Sample_Streamed(Beepy6, 255, Options.Normalize_Sound(110));
             Call_Back_Delay(2);
         }
     }
@@ -1412,7 +1412,7 @@ void ScoreClass::Do_Nod_Casualties_Graph(void)
             if (!Keyboard->Check())
                 Call_Back_Delay(3);
         }
-        Play_Sample(Beepy6, 255, Options.Normalize_Sound(110));
+        Play_Sample_Streamed(Beepy6, 255, Options.Normalize_Sound(110));
     }
     if (Keyboard->Check())
         Keyboard->Clear();
@@ -1606,7 +1606,7 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
     int index = 0;
     int factor = 1 + Get_Resolution_Factor();
 
-    void const* keystrok = MFCD::Retrieve("KEYSTROK.AUD");
+    const char* keystrok = "KEYSTROK.AUD";
 
     /*
     ** Ready the hidpage so it can restore background under zoomed letters
@@ -1669,7 +1669,7 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
                     str[index + 1] = 0;
 
                     int objindex;
-                    Play_Sample(keystrok, 255, Options.Normalize_Sound(255));
+                    Play_Sample_Streamed(keystrok, 255, Options.Normalize_Sound(255));
                     objindex = Alloc_Object(new ScoreScaleClass(str + index, xpos + (index * 6), ypos, pal));
                     while (ScoreObjs[objindex])
                         Call_Back_Delay(1);

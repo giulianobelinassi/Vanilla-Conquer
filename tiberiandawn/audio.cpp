@@ -336,6 +336,7 @@ int Sound_Effect(VocType voc, VolType volume, int variation, signed short pan_va
         }
     }
     _makepath(name, NULL, NULL, SoundEffectName[voc].Name, ext);
+#ifdef CACHE_AUDIO
     void const* ptr = MFCD::Retrieve(name);
 
     /*
@@ -345,7 +346,11 @@ int Sound_Effect(VocType voc, VolType volume, int variation, signed short pan_va
         return (
             Play_Sample(ptr, Fixed_To_Cardinal(SoundEffectName[voc].Priority, (int)volume), (int)volume, pan_value));
     }
+
     return (-1);
+#else
+    return Play_Sample_Streamed(name, Fixed_To_Cardinal(SoundEffectName[voc].Priority, (int)volume), volume, pan_value);
+#endif
 }
 
 /*

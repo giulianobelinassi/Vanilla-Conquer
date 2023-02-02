@@ -108,8 +108,8 @@ public:
     int Stage;
     int MaxStage;
     int TimerReset;
-    void const* CashTurn;
-    void const* Clock1;
+    const char* CashTurn;
+    const char* Clock1;
 
     virtual void Update(void);
     ScoreCredsClass(int xpos, int ypos, void const* data, int max, int timer);
