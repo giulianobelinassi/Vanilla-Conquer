@@ -890,7 +890,9 @@ SpecialDialogType SpecialDialog = SDLG_NONE;
 /*
 **	List of all games out there, & the address of the game's owner
 */
+#ifdef NETWORKING
 DynamicVectorClass<NodeNameType*> Games;
+#endif
 
 /*
 **	List of names & addresses of all the players in the game I'm joining.
@@ -941,5 +943,7 @@ bool RunningAsDLL = false;
 /* Holds the title filename. On 320x200, set to TITLE.CPS, else HTITLE.PCX. */
 char* TitlePicture = NULL;
 
+#ifdef NETWORKING
 // OmniBlade - Moves from tcpip.cpp as part of networking cleanup.
 bool Server; // Is this player acting as client or server
+#endif

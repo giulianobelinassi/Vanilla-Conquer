@@ -40,6 +40,10 @@
 #include "common/irandom.h"
 #include "common/settings.h"
 
+#ifdef _N64
+#pragma GCC optimize("Os")
+#endif
+
 #ifndef DEMO
 
 void Map_Selection(void);
@@ -416,7 +420,7 @@ const char* GetMapSelString(unsigned int index)
  *=============================================================================================*/
 void Map_Selection(void)
 {
-    void *anim, *progress, *oldfont, *greyearth, *greyearth2;
+    void *anim, *progress, *oldfont;
     unsigned char localpalette[768];
     int scenario, lastscenario;
     int house = PlayerPtr->Class->House;
@@ -501,7 +505,8 @@ void Map_Selection(void)
     static char const _othergreenpal[] = {
         0, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26};
     static char const _regpal[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    GraphicBufferClass backpage(20 * 6, 8);
+    char backpage_buf[20*6*8];
+    GraphicBufferClass backpage(20 * 6, 8, (void *) &backpage_buf);
 
     unsigned char grey2palette[768];
     unsigned char progresspalette[768];
@@ -527,7 +532,13 @@ void Map_Selection(void)
         return;
 
     Theme.Queue_Song(THEME_MAP1);
-    PseudoSeenBuff = new GraphicBufferClass(320, 200, (void*)NULL);
+
+    /* If we can use HidBuff then use it to save memory.*/
+    if (HidPage.Get_Width() == 320 && HidPage.Get_Height() >= 200) {
+      PseudoSeenBuff = HidPage.Get_Graphic_Buffer();
+    } else {
+      PseudoSeenBuff = new GraphicBufferClass(320, 200, NULL);
+    }
 
     /*
     ** Extra graphic buffer to draw text into
@@ -539,35 +550,12 @@ void Map_Selection(void)
     /*
     ** Now start the process where we fade the gray earth in.
     */
-    greyearth =
-        Open_Animation("GREYERTH.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), localpalette);
-    greyearth2 =
-        Open_Animation("E-BWTOCL.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), grey2palette);
+    void *greyearth =
+        Open_Animation("GREYERTH.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK), localpalette);
 
     /*
     ** Load the spinning-globe anim
     */
-    if (house == HOUSE_GOOD) {
-        const char* const earth_e = (factor == 1) ? "EARTH_E.WSA" : "HEARTH_E.WSA";
-        const char* const bosnia = (factor == 1) ? "BOSNIA.WSA" : "HBOSNIA.WSA";
-
-        anim = Open_Animation(earth_e, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), Palette);
-        progress = Open_Animation(lastscenario ? bosnia : "EUROPE.WSA",
-                                  NULL,
-                                  0,
-                                  (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE),
-                                  progresspalette);
-    } else {
-        const char* const earth_a = (factor == 1) ? "EARTH_A.WSA" : "HEARTH_A.WSA";
-        const char* const safrica = (factor == 1) ? "S_AFRICA.WSA" : "HSAFRICA.WSA";
-
-        anim = Open_Animation(earth_a, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), Palette);
-        progress = Open_Animation(lastscenario ? safrica : "AFRICA.WSA",
-                                  NULL,
-                                  0,
-                                  (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE),
-                                  progresspalette);
-    }
 
     const char* appear1 = "APPEAR1.AUD";
     const char* sfx4 = "SFX4.AUD";
@@ -614,6 +602,7 @@ void Map_Selection(void)
 
     Call_Back_Delay(4);
     SysMemPage.Clear();
+    void *greyearth2 = Open_Animation("E-BWTOCL.WSA", NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK), grey2palette);
     Animate_Frame(greyearth2, SysMemPage, 0);
     InterpolationPaletteChanged = true;
     InterpolationPalette = grey2palette;
@@ -634,6 +623,27 @@ void Map_Selection(void)
     ** Copy the first frame up to the seenpage (while screen is black)
     */
     SysMemPage.Clear();
+    if (house == HOUSE_GOOD) {
+        const char* const earth_e = (factor == 1) ? "EARTH_E.WSA" : "HEARTH_E.WSA";
+        const char* const bosnia = (factor == 1) ? "BOSNIA.WSA" : "HBOSNIA.WSA";
+
+        anim = Open_Animation(earth_e, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK), Palette);
+        progress = Open_Animation(lastscenario ? bosnia : "EUROPE.WSA",
+                                  NULL,
+                                  0,
+                                  (WSAOpenType)(WSA_OPEN_FROM_DISK),
+                                  progresspalette);
+    } else {
+        const char* const earth_a = (factor == 1) ? "EARTH_A.WSA" : "HEARTH_A.WSA";
+        const char* const safrica = (factor == 1) ? "S_AFRICA.WSA" : "HSAFRICA.WSA";
+
+        anim = Open_Animation(earth_a, NULL, 0, (WSAOpenType)(WSA_OPEN_FROM_DISK), Palette);
+        progress = Open_Animation(lastscenario ? safrica : "AFRICA.WSA",
+                                  NULL,
+                                  0,
+                                  (WSAOpenType)(WSA_OPEN_FROM_DISK),
+                                  progresspalette);
+    }
     Animate_Frame(anim, SysMemPage, 1); //, 0,0, (WSAType)0,0,0);
     SysMemPage.Blit(*PseudoSeenBuff);
     Interpolate_2X_Scale(PseudoSeenBuff, &SeenBuff, NULL, Settings.Video.InterpolationMode);
@@ -774,8 +784,10 @@ void Map_Selection(void)
     Increase_Palette_Luminance(InterpolationPalette, 30, 30, 30, 63);
     Read_Interpolation_Palette("MAP_PROG.PAL");
 
+    DBG_LOG("About to allocate Europe map");
     GraphicBufferClass* europe = new GraphicBufferClass(SysMemPage.Get_Width(), SysMemPage.Get_Height(), (GBC_Enum)0);
     SysMemPage.Blit(*europe);
+    DBG_LOG("Europe allocated");
 
     /*
     ** Now show territories as they existed last scenario
@@ -1007,7 +1019,9 @@ void Map_Selection(void)
     int done = 0;
     int framecounter = 0;
 
-    GraphicBufferClass click_map(320, 200, GBC_NONE);
+    // Allocate clickmap_buf in the stack else we may run out of memory.
+    char clickmap_buf[320 * 200];
+    GraphicBufferClass click_map(320, 200, &clickmap_buf);
     if (house == HOUSE_GOOD) {
         Load_Uncompress(CCFileClass(lastscenario ? "CLICK_EB.CPS" : "CLICK_E.CPS"), click_map, click_map);
     } else {
@@ -1146,7 +1160,10 @@ void Map_Selection(void)
     Fade_Palette_To(BlackPalette, FADE_PALETTE_MEDIUM, NULL);
     delete europe;
     delete TextPrintBuffer;
-    delete PseudoSeenBuff;
+
+    /* Only delete PseudoSeenBuff if it is indeed pseudo.  */
+    if (PseudoSeenBuff != HidPage.Get_Graphic_Buffer())
+        delete PseudoSeenBuff;
     TextPrintBuffer = NULL;
     PseudoSeenBuff = NULL;
     BlitList.Clear();

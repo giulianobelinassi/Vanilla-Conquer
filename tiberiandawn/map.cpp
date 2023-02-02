@@ -388,6 +388,7 @@ CellClass* BlubCell;
  *   05/31/1994 JLB : Created.                                                                 *
  *   12/01/1994 BR : Added CellTriggers initialization                                         *
  *=============================================================================================*/
+static TriggerClass* _CellTriggers[MAP_CELL_TOTAL];
 void MapClass::One_Time(void)
 {
     GScreenClass::One_Time();
@@ -404,7 +405,7 @@ void MapClass::One_Time(void)
     /*
     **	Init the CellTriggers array to the required size.
     */
-    CellTriggers.Resize(MAP_CELL_TOTAL);
+    CellTriggers.Resize(MAP_CELL_TOTAL, _CellTriggers);
 }
 
 ////////////////////////////////////////////////////
@@ -423,7 +424,7 @@ void MapClass::One_Time_Editor(void)
     /*
     **	Init the CellTriggers array to the required size.
     */
-    CellTriggers.Resize(MAP_CELL_TOTAL);
+    CellTriggers.Resize(MAP_CELL_TOTAL, _CellTriggers);
 }
 // End of change. - 06/15/2019 JAS
 ////////////////////////////////////////////////////

@@ -626,8 +626,14 @@ void ScoreClass::Presentation(void)
     if (Special.IsJurassic && AreThingiesEnabled)
         return;
 
-    PseudoSeenBuff = new GraphicBufferClass(320, 200, (void*)NULL);
-    TextPrintBuffer = new GraphicBufferClass(SeenBuff.Get_Width(), SeenBuff.Get_Height(), (void*)NULL);
+    /* If we can use HidBuff then use it to save memory.*/
+    if (HidPage.Get_Width() == 320 && HidPage.Get_Height() >= 200) {
+      PseudoSeenBuff = HidPage.Get_Graphic_Buffer();
+    } else {
+      PseudoSeenBuff = new GraphicBufferClass(320, 200, NULL);
+    }
+
+    TextPrintBuffer = new GraphicBufferClass(SeenBuff.Get_Width(), SeenBuff.Get_Height(), NULL);
     TextPrintBuffer->Clear();
     BlitList.Clear();
     Disable_Uncompressed_Shapes();
@@ -653,7 +659,7 @@ void ScoreClass::Presentation(void)
     /*
     ** Load the background for the score screen
     */
-    anim = Open_Animation(ScreenNames[house], NULL, 0L, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), Palette);
+    anim = Open_Animation(ScreenNames[house], NULL, 0L, (WSAOpenType)(WSA_OPEN_FROM_DISK), Palette);
 
     unsigned minutes = (unsigned)((ElapsedTime / TIMER_MINUTE)) + 1;
 
@@ -1011,7 +1017,9 @@ void ScoreClass::Presentation(void)
 
     Set_Logic_Page(SeenBuff);
 
-    delete PseudoSeenBuff;
+    /* Only delete PseudoSeenBuff if it is indeed pseudo.  */
+    if (PseudoSeenBuff != HidPage.Get_Graphic_Buffer())
+        delete PseudoSeenBuff;
     delete TextPrintBuffer;
     TextPrintBuffer = NULL;
     BlitList.Clear();
@@ -1681,7 +1689,7 @@ void ScoreClass::Input_Name(char str[], int xpos, int ypos, char const pal[])
         }
 
         Frame_Limiter();
-    } while (key != KN_RETURN && key != KN_KEYPAD_RETURN);
+    } while (key != KN_RETURN && key != KN_KEYPAD_RETURN && key != VK_LBUTTON && key != VK_ESCAPE);
 }
 
 void Animate_Cursor(int pos, int ypos)
@@ -2032,7 +2040,7 @@ void Multi_Score_Presentation(void)
 
     Set_Palette(BlackPalette);
 
-    anim = Open_Animation("MLTIPLYR.WSA", NULL, 0L, (WSAOpenType)(WSA_OPEN_FROM_MEM | WSA_OPEN_TO_PAGE), Palette);
+    anim = Open_Animation("MLTIPLYR.WSA", NULL, 0L, (WSAOpenType)(WSA_OPEN_FROM_DISK), Palette);
     Hide_Mouse();
 
     /*
