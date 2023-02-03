@@ -183,8 +183,10 @@ int CCINIClass::Load(Straw& file, bool withdigest)
  *=============================================================================================*/
 int CCINIClass::Save(FileClass& file, bool withdigest) const
 {
+#ifndef _N64 // No write support yet
     FilePipe fp(file);
     return (Save(fp, withdigest));
+#endif
 }
 
 /***********************************************************************************************

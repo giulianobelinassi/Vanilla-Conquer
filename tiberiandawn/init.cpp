@@ -517,13 +517,15 @@ bool Init_Game(int, char*[])
         **	Cache the main game data. This operation can take a very long time.
         */
         MFCD::Cache("CONQUER.MIX");
+        // Don't cache it. We will stream from disk/cart
+        /*
         if (SampleType != 0 && !Debug_Quiet) {
             MFCD::Cache("SOUNDS.MIX");
             if (Special.IsJuvenile) {
                 new MFCD("ZOUNDS.MIX"); // Cached.
                 MFCD::Cache("ZOUNDS.MIX");
             }
-        }
+        } */
     }
     Call_Back();
 

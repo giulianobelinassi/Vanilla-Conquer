@@ -45,6 +45,8 @@
 #include <errno.h>
 #include "ccfile.h"
 
+#include "debugstring.h"
+
 /***********************************************************************************************
  * CCFileClass::CCFileClass -- Filename based constructor for C&C file.                        *
  *                                                                                             *

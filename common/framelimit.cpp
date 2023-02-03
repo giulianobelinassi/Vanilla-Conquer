@@ -11,7 +11,7 @@
 
 extern WWMouseClass* WWMouse;
 
-#ifdef SDL_BUILD
+#if defined(SDL_BUILD) || defined(_N64)
 void Video_Render_Frame();
 #endif
 

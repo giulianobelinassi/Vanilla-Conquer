@@ -28,6 +28,8 @@
 #undef DBG_LOG
 #define DBG_LOG(...)
 
+#define IS_HANDLE_VALID(x) (((unsigned) x) < MAX_SAMPLE_TRACKERS)
+
 enum
 {
     AUD_CHUNK_MAGIC_ID = 0x0000DEAF,
@@ -38,7 +40,7 @@ enum
     MAX_SAMPLE_TRACKERS = 5, // C&C issue where sounds get cut off is because of the small number of trackers.
     BUFFER_CHUNK_SIZE = 4096, //Larger than that results in crash in N64 mixer system.
     UNCOMP_BUFFER_SIZE = 2098,
-    STREAM_BUFFER_SIZE = BUFFER_CHUNK_SIZE/2, // Attempt to reduce memory usage.
+    STREAM_BUFFER_SIZE = (BUFFER_CHUNK_SIZE + 128),
     STREAM_BUFFER_COUNT = 8,
     INVALID_AUDIO_HANDLE = -1,
     INVALID_FILE_HANDLE = -1,
@@ -144,13 +146,6 @@ struct SampleTrackerType
     int QueueSize;       // Size of queue buffer attached.
 
     /*
-    **	The file variables are used when streaming directly off of the
-    **	hard drive.
-    */
-    int FileHandle; // Streaming file handle (INVALID_FILE_HANDLE = not in use).
-    void* FileBuffer;
-
-    /*
     ** The following structure is used if the sample if compressed using
     ** the sos 16 bit compression Codec.
     */
@@ -191,10 +186,18 @@ struct SampleTrackerType
     // The Frequency of the audio stream
     int Frequency;
 
+
     // A set of buffers
     //ALuint AudioBuffers[OPENAL_BUFFER_COUNT];
 
     waveform_t WaveObj;
+
+    /*
+    **	The file variables are used when streaming directly off of the
+    **	hard drive.
+    */
+    int FileHandle; // Streaming file handle (INVALID_FILE_HANDLE = not in use).
+    char FileBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT];
 };
 
 struct LockedDataType
@@ -211,8 +214,6 @@ void (*Audio_Focus_Loss_Function)() = nullptr;
 
 SFX_Type SoundType;
 Sample_Type SampleType;
-char _FileStreamBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT];
-static void* FileStreamBuffer;
 
 bool StreamLowImpact = false;
 bool StartingFileStream = false;
@@ -365,13 +366,15 @@ int Stream_Sample_Vol(void* buffer, int size, bool (*callback)(short, short*, vo
         return INVALID_AUDIO_HANDLE;
     }
 
+    SampleTrackerType* st = &LockedData.SampleTracker[handle];
+
     AUDHeaderType header;
     memcpy(&header, buffer, sizeof(header));
     header.Size = le32toh(header.Size);
     int oldsize = header.Size;
     header.Size = size - sizeof(header);
     memcpy(buffer, &header, sizeof(header));
-    int playid = Play_Sample_Handle(buffer, PRIORITY_MAX, volume, 0, handle);
+    int playid = Play_Sample_Handle(buffer, st->Priority, volume, 0, handle);
     header.Size = oldsize;
     memcpy(buffer, &header, sizeof(header));
 
@@ -379,7 +382,6 @@ int Stream_Sample_Vol(void* buffer, int size, bool (*callback)(short, short*, vo
         return INVALID_AUDIO_HANDLE;
     }
 
-    SampleTrackerType* st = &LockedData.SampleTracker[playid];
     st->Callback = callback;
     st->Odd = 0;
 
@@ -395,13 +397,9 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
 
     SampleTrackerType* st = &LockedData.SampleTracker[id];
 
-    if (st->FileBuffer == nullptr) {
-        return false;
-    }
-
     if (*buffer == nullptr && st->FilePending) {
         *buffer =
-            static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE * (*odd % STREAM_BUFFER_COUNT);
+            st->FileBuffer + STREAM_BUFFER_SIZE * (*odd % STREAM_BUFFER_COUNT);
         --st->FilePending;
         ++*odd;
         *size = st->FilePending == 0 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
@@ -419,7 +417,7 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
                  --num_empty_buffers) {
                 // Buffer to fill with data.
                 void* tofill =
-                    static_cast<char*>(st->FileBuffer)
+                    st->FileBuffer
                     + STREAM_BUFFER_SIZE * ((st->FilePending + *odd) % STREAM_BUFFER_COUNT);
 
                 int psize = Read_File(st->FileHandle, tofill, STREAM_BUFFER_SIZE);
@@ -438,7 +436,7 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
         }
 
         if (st->QueueBuffer == nullptr && st->FilePending) {
-            st->QueueBuffer = static_cast<char*>(st->FileBuffer)
+            st->QueueBuffer = st->FileBuffer
                               + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
             --st->FilePending;
             ++st->Odd;
@@ -466,7 +464,7 @@ void File_Stream_Preload(int index)
 
     for (i = st->FilePending; i < num; ++i) {
         int size = Read_File(st->FileHandle,
-                             static_cast<char*>(st->FileBuffer) + i * STREAM_BUFFER_SIZE,
+                             st->FileBuffer + i * STREAM_BUFFER_SIZE,
                              STREAM_BUFFER_SIZE);
 
 
@@ -515,45 +513,30 @@ void File_Stream_Preload(int index)
                 st->FileHandle = INVALID_FILE_HANDLE;
             }
 
-            st->QueueBuffer = static_cast<char*>(st->FileBuffer) + STREAM_BUFFER_SIZE;
+            st->QueueBuffer = st->FileBuffer + STREAM_BUFFER_SIZE;
             st->QueueSize = st->FilePending == 0 ? st->FilePendingSize : STREAM_BUFFER_SIZE;
         }
     }
 }
 
-int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_start)
+static int File_Stream_Sample_Generic(const char *filename, int volume, int priority, short panloc, bool is_score, bool real_time_start)
 {
-    DBG_LOG("File_Stream_Sample_Vol: %s", filename);
-
-    /* Check if audio engine was initialized and sanity check arguments.  */
-    if (LockedData.DigiHandle == INVALID_AUDIO_HANDLE ||
-          filename == nullptr || !Find_File(filename)) {
+    if (LockedData.DigiHandle == INVALID_AUDIO_HANDLE || filename == nullptr || !Find_File(filename)) {
         return INVALID_AUDIO_HANDLE;
     }
 
-    /* If a buffer for streaming .AUD files from disk was not allocated yet, then
-       allocate it.  */
-    if (FileStreamBuffer == nullptr) {
-        FileStreamBuffer = (void*) _FileStreamBuffer;
-
-        for (int i = 0; i < MAX_SAMPLE_TRACKERS; ++i) {
-            LockedData.SampleTracker[i].FileBuffer = FileStreamBuffer;
-        }
-    }
-
-    /* Open file to stream.  */
     int fh = Open_File(filename, 1);
+
     if (fh == INVALID_FILE_HANDLE) {
         return INVALID_AUDIO_HANDLE;
     }
 
-    /* Get a free tracker for this sample.  */
-    int handle = Get_Free_Sample_Handle(PRIORITY_MAX);
+    int handle = Get_Free_Sample_Handle(priority);
 
-    /* If tracker is valid.  */
-    if (handle < MAX_SAMPLE_TRACKERS) {
+    if (IS_HANDLE_VALID(handle)) {
         SampleTrackerType* st = &LockedData.SampleTracker[handle];
-        st->IsScore = true;
+        st->Priority = priority;
+        st->IsScore = is_score;
         st->FilePending = 0;
         st->FilePendingSize = 0;
         st->Loading = real_time_start;
@@ -563,8 +546,20 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
         return handle;
     }
 
+    Close_File(fh);
     return INVALID_AUDIO_HANDLE;
+}
+
+int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_start)
+{
+    return File_Stream_Sample_Generic(filename, volume, PRIORITY_MAX, 0, true, real_time_start);
 };
+
+int Play_Sample_Streamed(const char *filename, int priority, int vol, short panloc)
+{
+    /* Stream the sample from disk.  */
+    return File_Stream_Sample_Generic(filename, vol, priority, panloc, false, true);
+}
 
 void Sound_Callback()
 {
@@ -774,8 +769,7 @@ void Stop_Sample(int index)
 
 bool Sample_Status(int index)
 {
-    //DBG_LOG("Sample_Status");
-    if (index < 0) {
+    if (!IS_HANDLE_VALID(index)) {
         return false;
     }
 
@@ -877,7 +871,7 @@ void Waveform_Update(void *ctx, samplebuffer_t *sbuf, int wpos, int wlen, bool s
   }
 
   if (!st->QueueBuffer && st->FilePending != 0) {
-    st->QueueBuffer = static_cast<char*>(st->FileBuffer)
+    st->QueueBuffer = st->FileBuffer
       + STREAM_BUFFER_SIZE * (st->Odd % STREAM_BUFFER_COUNT);
     --st->FilePending;
     ++st->Odd;
@@ -1006,10 +1000,12 @@ int Set_Score_Vol(int volume)
 
 void Fade_Sample(int index, int ticks)
 {
-    Stop_Sample(index);
+    if(Sample_Status(index)) {
+        Stop_Sample(index);
+        return;
+    }
     return;
 
-    DBG_LOG("Fade_Sample");
     if (Sample_Status(index)) {
         SampleTrackerType* st = &LockedData.SampleTracker[index];
 
