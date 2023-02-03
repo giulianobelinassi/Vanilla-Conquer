@@ -63,8 +63,14 @@ typedef struct
 
 #pragma pack(pop)
 
-#define INITIAL_BIG_SHAPE_BUFFER_SIZE 12000 * 1024
-#define THEATER_BIG_SHAPE_BUFFER_SIZE 2000 * 1024
+#ifdef _N64
+# define INITIAL_BIG_SHAPE_BUFFER_SIZE 1600 * 1024
+# define THEATER_BIG_SHAPE_BUFFER_SIZE 250 * 1024
+#else
+# define INITIAL_BIG_SHAPE_BUFFER_SIZE 12000 * 1024
+# define THEATER_BIG_SHAPE_BUFFER_SIZE 2000 * 1024
+#endif
+
 #define UNCOMPRESS_MAGIC_NUMBER       56789
 
 static unsigned short CurrentUncompressMagicNum = UNCOMPRESS_MAGIC_NUMBER;
@@ -193,8 +199,8 @@ void Check_Use_Compressed_Shapes()
 
 
     #ifdef _N64
-    UseBigShapeBuffer = false;
-    OriginalUseBigShapeBuffer = false;
+    UseBigShapeBuffer = true;
+    OriginalUseBigShapeBuffer = true;
     return;
     #endif
     UseBigShapeBuffer = true;
