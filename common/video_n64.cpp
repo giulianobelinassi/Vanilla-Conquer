@@ -167,9 +167,14 @@ unsigned int Get_Free_Video_Memory(void)
  * HISTORY:                                                                                    *
  *    1/12/96 9:14AM ST : Created                                                              *
  *=============================================================================================*/
+extern bool OverlappedVideoBlits;
 unsigned Get_Video_Hardware_Capabilities(void)
 {
-    return 0;
+    // Overlapping regions do not work with RDP.
+    OverlappedVideoBlits = false;
+
+    // Return the fancy features we support.
+    return VIDEO_BLITTER | VIDEO_BLITTER_ASYNC | VIDEO_COLOR_FILL;
 }
 
 /***********************************************************************************************
@@ -314,7 +319,7 @@ public:
 
     virtual bool IsReadyToBlit()
     {
-        return false;
+        return true;
     }
 
     virtual bool LockWait()
@@ -329,15 +334,105 @@ public:
 
     virtual void Blt(const Rect& destRect, VideoSurface* src, const Rect& srcRect, bool mask)
     {
+      short src_pitch = src->GetPitch();
+      char *src_ptr = static_cast<char*>(src->GetData());
+
+      // Move head of src_ptr to the rectangle upper left corner.
+      //src_ptr += srcRect.Y * src_pitch + srcRect.X;
+
+      // Compute the dimensions of src surface.
+      short src_w = srcRect.Width + srcRect.X;
+      short src_h = srcRect.Height + srcRect.Y;
+
+      // Create src surface using our pointer data.
+      surface_t src_surface = surface_make(src_ptr, FMT_I8, src_w, src_h, src_pitch);
+
+      // Do the same thing for our dst surface.
+      short dst_pitch = this->GetPitch();
+      char *dst_ptr = static_cast<char*>(this->GetData());
+
+      //dst_ptr += destRect.Y * dst_pitch + destRect.X;
+
+      short dst_w = destRect.Width + destRect.X;
+      short dst_h = destRect.Height + destRect.Y;
+
+      surface_t dst_surface = surface_make(dst_ptr, FMT_CI8, dst_w, dst_h, dst_pitch);
+
+      // Enable validator
+      //rdpq_debug_start();
+
+      // Attach the mighty RDP
+      rdpq_attach(&dst_surface);
+
+      // Set copy render mode, without transparency.
+      rdpq_mode_tlut(TLUT_NONE);
+      rdpq_set_mode_standard();
+
+      // Blit
+      rdpq_blitparms_t blt_parms = {
+        .s0 = srcRect.X,
+        .t0 = srcRect.Y,
+        .width = srcRect.Width,
+        .height = srcRect.Height,
+      };
+      rdpq_tex_blit(&src_surface, destRect.X, destRect.Y, &blt_parms);
+
+      // Detatch the RDP and show
+      rdpq_detach();
+      //rdpq_debug_stop();
     }
 
     virtual void FillRect(const Rect& rect, unsigned char color)
     {
+      int pitch = GetPitch();
+      unsigned char *dst_ptr = (unsigned char *)GetData();
+      dst_ptr += pitch * rect.Y + rect.X;
+
+      for (int i = 0; i < rect.Height; i++) {
+          memset(dst_ptr, color, rect.Width);
+          dst_ptr += pitch;
+      }
+
+      #if 0
+      static unsigned char __attribute__((alinged (64))) pixel[1];
+      pixel[0] = color;
+
+      surface_t src_surface = surface_make_linear(&pixel, FMT_I8, 1, 1);
+
+
+      // Enable validator
+      //rdpq_debug_start();
+
+      // Attach the mighty RDP
+      rdpq_attach(&Surface);
+
+      // Set copy render mode, without transparency.
+      rdpq_mode_tlut(TLUT_NONE);
+      rdpq_set_mode_standard();
+
+      // Blit
+      rdpq_blitparms_t blt_parms = {
+        .s0 = 0,
+        .t0 = 0,
+        .width = 1,
+        .height = 1,
+        .scale_x = rect.Width,
+        .scale_y = rect.Height,
+      };
+      rdpq_tex_blit(&src_surface, rect.X, rect.Y, &blt_parms);
+
+      // Detatch the RDP and show
+      rdpq_detach();
+      //rdpq_debug_stop();
+      #endif
     }
 
     void RenderSurface(void)
     {
       surface_t *disp;
+
+      // Make sure the RDP has finished drawing whatever it was drawing before.
+      //rdpq_sync_full(NULL, NULL);
 
       while( !(disp = display_lock()) );
 
