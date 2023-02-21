@@ -68,8 +68,6 @@
 #define raw_fopen(x, y) _tfopen(UTF8ToTCHAR(x), UTF8ToTCHAR(y))
 #endif
 
-#include <libdragon.h>
-
 #include <sys/stat.h>
 
 /***********************************************************************************************

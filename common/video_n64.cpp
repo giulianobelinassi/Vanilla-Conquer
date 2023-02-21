@@ -362,7 +362,7 @@ public:
       //rdpq_debug_start();
 
       // Attach the mighty RDP
-      rdpq_attach(&dst_surface);
+      rdpq_attach(&dst_surface, NULL);
 
       // Set copy render mode, without transparency.
       rdpq_mode_tlut(TLUT_NONE);
@@ -384,15 +384,6 @@ public:
 
     virtual void FillRect(const Rect& rect, unsigned char color)
     {
-      int pitch = GetPitch();
-      unsigned char *dst_ptr = (unsigned char *)GetData();
-      dst_ptr += pitch * rect.Y + rect.X;
-
-      for (int i = 0; i < rect.Height; i++) {
-          memset(dst_ptr, color, rect.Width);
-          dst_ptr += pitch;
-      }
-
       #if 0
       static unsigned char __attribute__((alinged (64))) pixel[1];
       pixel[0] = color;
@@ -438,7 +429,7 @@ public:
 
 
       // Attach the mighty RDP
-      rdpq_attach(disp);
+      rdpq_attach(disp, NULL);
 
       // Load the palette
       data_cache_hit_writeback(CurrN64Pal, 256*2);
