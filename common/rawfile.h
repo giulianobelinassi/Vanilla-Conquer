@@ -92,6 +92,9 @@ public:
     virtual int Write(void const* buffer, int size);
     virtual void Close(void);
     virtual void Error(int error, int canretry = false, char const* filename = NULL);
+#ifdef _N64
+    uint32_t Get_ROM_Addr(void);
+#endif
     void Bias(int start, int length = -1);
 
     FILE* Get_File_Handle(void)

@@ -707,6 +707,27 @@ int RawFileClass::Size(void)
     return (BiasLength);
 }
 
+#ifdef _N64
+#include <libdragon.h>
+
+uint32_t RawFileClass::Get_ROM_Addr(void)
+{
+    if (!Handle) {
+        return NULL;
+    }
+
+    if (Handle->_file == 0) {
+        return NULL;
+    }
+
+    int fd = Handle->_file - 2;
+    DBG_LOG("fd: %d", fd);
+    uint32_t ret = dfs_rom_addr_of_file(fd) + BiasStart;
+    DBG_LOG("ROMAddr: 0x%x", ret);
+    return ret;
+}
+#endif
+
 /***********************************************************************************************
  * RawFileClass::Create -- Creates an empty file.                                              *
  *                                                                                             *

@@ -46,6 +46,9 @@
 #include "ccfile.h"
 
 #include "debugstring.h"
+#ifdef _N64
+#include <libdragon.h>
+#endif
 
 /***********************************************************************************************
  * CCFileClass::CCFileClass -- Filename based constructor for C&C file.                        *
@@ -480,7 +483,11 @@ int CCFileClass::Open(int rights)
 ** Backward compatibility section.
 */
 
-static CCFileClass Handles[10];
+#ifndef MAX_OPEN_FILES
+#define MAX_OPEN_FILES 10
+#endif
+
+static CCFileClass Handles[MAX_OPEN_FILES];
 
 int Open_File(char const* file_name, int mode)
 {
@@ -497,6 +504,9 @@ int Open_File(char const* file_name, int mode)
 
 void Close_File(int handle)
 {
+    if ((unsigned) handle >= MAX_OPEN_FILES) {
+        return;
+    }
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         Handles[handle].Close();
     }
@@ -504,6 +514,10 @@ void Close_File(int handle)
 
 int Read_File(int handle, void* buf, unsigned int bytes)
 {
+    if ((unsigned) handle >= MAX_OPEN_FILES) {
+        return 0;
+    }
+
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Read(buf, bytes));
     }
@@ -512,6 +526,10 @@ int Read_File(int handle, void* buf, unsigned int bytes)
 
 int Write_File(int handle, void const* buf, unsigned int bytes)
 {
+    if ((unsigned) handle >= MAX_OPEN_FILES) {
+        return 0;
+    }
+
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Write(buf, bytes));
     }
@@ -531,6 +549,10 @@ int Delete_File(char const* file_name)
 
 unsigned int File_Size(int handle)
 {
+    if ((unsigned) handle >= MAX_OPEN_FILES) {
+        return 0;
+    }
+
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Size());
     }
@@ -539,15 +561,29 @@ unsigned int File_Size(int handle)
 
 unsigned int Seek_File(int handle, int offset, int starting)
 {
+    if ((unsigned) handle >= MAX_OPEN_FILES) {
+        return 0;
+    }
+
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Seek(offset, starting));
     }
     return (0);
 }
 
+#ifdef _N64
+uint32_t Get_ROM_Addr_File(int handle)
+{
+    if (handle != WWERROR && Handles[handle].Is_Open()) {
+        return (Handles[handle].Get_ROM_Addr());
+    }
+    return (0);
+}
+#endif
+
 void WWDOS_Shutdown(void)
 {
-    for (int index = 0; index < 10; index++) {
+    for (int index = 0; index < MAX_OPEN_FILES; index++) {
         Handles[index].Set_Name(NULL);
     }
 }

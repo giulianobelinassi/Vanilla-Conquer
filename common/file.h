@@ -184,6 +184,10 @@ int File_Exists(char const* file_name);
 unsigned int File_Size(int handle);
 int Open_File_With_Recovery(char const* file_name, unsigned int mode);
 
+#ifdef _N64
+unsigned Get_ROM_Addr_File(int handle);
+#endif
+
 /*=========================================================================*/
 /* The following prototypes are for the file: FILECACH.CPP						*/
 /*=========================================================================*/
