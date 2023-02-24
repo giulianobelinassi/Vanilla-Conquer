@@ -45,6 +45,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef _N64
+#include <libdragon.h>
+typedef int filedesc_t;
+#define ERRHANDLE(handle)       ((handle) < 0)
+#define INV_HANDLE              -1
+#else
+typedef FILE* filedesc_t;
+#define ERRHANDLE(handle)       (!(handle))
+#define INV_HANDLE              nullptr
+#endif
+
 #include "wwfile.h"
 
 #ifndef WWERROR
@@ -94,7 +105,7 @@ public:
     virtual void Error(int error, int canretry = false, char const* filename = NULL);
     void Bias(int start, int length = -1);
 
-    FILE* Get_File_Handle(void)
+    filedesc_t Get_File_Handle(void)
     {
         return (Handle);
     };
@@ -128,7 +139,7 @@ private:
     /*
     **	This is the low level DOS handle. A -1 indicates an empty condition.
     */
-    FILE* Handle;
+    filedesc_t Handle;
 };
 
 /***********************************************************************************************
@@ -172,7 +183,7 @@ inline RawFileClass::RawFileClass(void)
     : Rights(READ)
     , BiasStart(0)
     , BiasLength(-1)
-    , Handle(nullptr)
+    , Handle(INV_HANDLE)
     , Filename(0)
 {
 }
@@ -219,7 +230,7 @@ inline RawFileClass::~RawFileClass(void)
  *=============================================================================================*/
 inline int RawFileClass::Is_Open(void) const
 {
-    return (Handle != nullptr);
+    return (!ERRHANDLE(Handle));
 }
 
 #endif

@@ -68,6 +68,22 @@
 #define raw_fopen(x, y) _tfopen(UTF8ToTCHAR(x), UTF8ToTCHAR(y))
 #endif
 
+#ifdef _N64
+#include <libdragon.h>
+
+#undef raw_fopen
+#undef unlink
+
+#define raw_fopen(x, y)         dfs_open(x)
+#define raw_fseek(x, y, z)      dfs_seek(x, y, z)
+#define raw_ftell(x)            dfs_tell(x)
+#define raw_fclose(x)           dfs_close(x)
+#define raw_clearerr(x)
+#define raw_ferror(x)           ((x) < 0)
+#define raw_fwrite(x, y, z, w)  ((y) * (z))
+#define raw_fread(x, y, z, w)   dfs_read(x, y, z, w)
+#endif
+
 #include <sys/stat.h>
 
 /***********************************************************************************************
@@ -123,7 +139,7 @@ RawFileClass::RawFileClass(char const* filename)
     : Rights(0)
     , BiasStart(0)
     , BiasLength(-1)
-    , Handle(nullptr)
+    , Handle(INV_HANDLE)
     , Filename(nullptr)
 {
     Set_Name(filename);
@@ -287,7 +303,7 @@ int RawFileClass::Open(int rights)
         **	For the case of the file cannot be found, then allow a retry. All other cases
         **	are fatal.
         */
-        if (Handle == nullptr) {
+        if (ERRHANDLE(Handle)) {
             Error(errno, false, Filename);
             return (false);
         }
@@ -323,8 +339,9 @@ int RawFileClass::Is_Available(int forced)
     **	If the file is already open, then is must have already passed the availability check.
     **	Return true in this case.
     */
-    if (Is_Open())
+    if (Is_Open()) {
         return (true);
+    }
 
     /*
     **	If this is a forced check, then go through the normal open channels, since those
@@ -342,17 +359,17 @@ int RawFileClass::Is_Available(int forced)
     **	condition, go through the normal error recover channels.
     */
     Handle = raw_fopen(Filename, "r");
-    if (Handle == nullptr) {
+    if (ERRHANDLE(Handle)) {
         return (false);
     }
 
     /*
     **	Since the file could be opened, then close it and return that the file exists.
     */
-    if (fclose(Handle) != 0) {
+    if (raw_fclose(Handle) != 0) {
         Error(errno, false, Filename);
     }
-    Handle = nullptr;
+    Handle = INV_HANDLE;
 
     return (true);
 }
@@ -400,14 +417,14 @@ void RawFileClass::Close(void)
         **	Try to close the file. If there was an error (who knows what that could be), then
         **	call the error routine.
         */
-        if (fclose(Handle) != 0) {
+        if (raw_fclose(Handle) != 0) {
             Error(errno, false, Filename);
         }
 
         /*
         **	At this point the file must have been closed. Mark the file as empty and return.
         */
-        Handle = nullptr;
+        Handle = INV_HANDLE;
 
         /*
         **	Clear any positioning information incase class is reused to open another file.
@@ -470,9 +487,9 @@ int RawFileClass::Read(void* buffer, int size)
 
     int total = 0;
     while (size > 0) {
-        clearerr(Handle);
-        bytesread = fread(buffer, 1, size, Handle);
-        if (ferror(Handle)) {
+        raw_clearerr(Handle);
+        bytesread = raw_fread(buffer, 1, size, Handle);
+        if (raw_ferror(Handle)) {
             size -= bytesread;
             total += bytesread;
             Error(errno, true, Filename);
@@ -529,9 +546,9 @@ int RawFileClass::Write(void const* buffer, int size)
         opened = true;
     }
 
-    clearerr(Handle);
-    byteswritten = fwrite(buffer, 1, size, Handle);
-    if (ferror(Handle)) {
+    raw_clearerr(Handle);
+    byteswritten = raw_fwrite(buffer, 1, size, Handle);
+    if (raw_ferror(Handle)) {
         Error(errno, false, Filename);
     }
 
@@ -666,22 +683,22 @@ int RawFileClass::Size(void)
         /*
         ** With stdio we seek to end to obtain the length, then reset the position back.
         */
-        clearerr(Handle);
+        raw_clearerr(Handle);
 
-        int position = ftell(Handle);
+        int position = raw_ftell(Handle);
         if (position < 0) {
             Error(errno, false, Filename);
             return 0;
         }
 
-        if (fseek(Handle, 0, SEEK_END) < 0) {
+        if (raw_fseek(Handle, 0, SEEK_END) < 0) {
             Error(errno, false, Filename);
             return 0;
         }
 
-        size = ftell(Handle);
+        size = raw_ftell(Handle);
 
-        if (fseek(Handle, position, SEEK_SET) < 0) {
+        if (raw_fseek(Handle, position, SEEK_SET) < 0) {
             Error(errno, false, Filename);
             return 0;
         }
@@ -876,7 +893,7 @@ int RawFileClass::Raw_Seek(int pos, int dir)
         Error(EBADF, false, Filename);
     } else {
 
-        clearerr(Handle);
+        raw_clearerr(Handle);
 
         /*
         ** If pos == 0 and dir == SEEK_CUR, fseek should basically do nothing.
@@ -886,12 +903,12 @@ int RawFileClass::Raw_Seek(int pos, int dir)
         ** guard this case so that sequential ::Read's do not take too much time.
         */
         if (!(pos == 0 && dir == SEEK_CUR)) {
-            if (fseek(Handle, pos, dir) < 0) {
+            if (raw_fseek(Handle, pos, dir) < 0) {
                 Error(errno, false, Filename);
             }
         }
 
-        pos = ftell(Handle);
+        pos = raw_ftell(Handle);
     }
     /*
     **	Return with the new position of the file. This will range between zero and the number of
