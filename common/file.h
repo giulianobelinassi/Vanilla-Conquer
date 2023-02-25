@@ -186,6 +186,7 @@ int Open_File_With_Recovery(char const* file_name, unsigned int mode);
 
 #ifdef _N64
 unsigned Get_ROM_Addr_File(int handle);
+int Open_File_ROM(char const* file_name, int mode);
 #endif
 
 /*=========================================================================*/

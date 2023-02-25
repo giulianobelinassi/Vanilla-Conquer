@@ -199,11 +199,9 @@ struct SampleTrackerType
     **	hard drive.
     */
     int FileHandle; // Streaming file handle (INVALID_FILE_HANDLE = not in use).
-    uint32_t ROMAddr;
-    uint32_t FileSize;
 
     char _pad[12];
-    char FileBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT];
+    char FileBuffer[STREAM_BUFFER_SIZE * STREAM_BUFFER_COUNT] __attribute__((alignment(16)));
 };
 
 struct ROMCacheEntry
@@ -273,30 +271,6 @@ struct LockedDataType
     unsigned ScoreVolume;
     int VolumeLock;
 } LockedData;
-
-static int Read_ROM(SampleTrackerType *st, void *destbuf, int32_t size)
-{
-    if (st->FileSize - st->ROMAddr < size) {
-        size = st->FileSize - st->ROMAddr;
-    }
-
-    unsigned char temp_buf[size + 1];
-
-    //fprintf(stderr, "DMA reading from 0x%lx\n", st->ROMAddr);
-
-    if (((uint32_t)destbuf ^ st->ROMAddr) & 1 != 0) {
-      data_cache_hit_writeback_invalidate(temp_buf, size + 1);
-      dma_read(temp_buf + 1, st->ROMAddr, size);
-      memcpy(destbuf, temp_buf + 1, size);
-    } else {
-      dma_read(destbuf, st->ROMAddr, size);
-    }
-
-    //Read_File(st->FileHandle, destbuf, size);
-
-    st->ROMAddr += size;
-    return size;
-}
 
 void (*Audio_Focus_Loss_Function)() = nullptr;
 
@@ -508,8 +482,7 @@ bool File_Callback(short id, short* odd, void** buffer, int* size)
                     st->FileBuffer
                     + STREAM_BUFFER_SIZE * ((st->FilePending + *odd) % STREAM_BUFFER_COUNT);
 
-                //int psize = Read_File(st->FileHandle, tofill, STREAM_BUFFER_SIZE);
-                int psize = Read_ROM(st, tofill, STREAM_BUFFER_SIZE);
+                int psize = Read_File(st->FileHandle, tofill, STREAM_BUFFER_SIZE);
 
                 if (psize != STREAM_BUFFER_SIZE) {
                     Close_File(st->FileHandle);
@@ -552,11 +525,7 @@ void File_Stream_Preload(int index)
     int i = 0;
 
     for (i = st->FilePending; i < num; ++i) {
-        //int size = Read_File(st->FileHandle,
-        //                     st->FileBuffer + i * STREAM_BUFFER_SIZE,
-        //                     STREAM_BUFFER_SIZE);
-
-        int size = Read_ROM(st,
+        int size = Read_File(st->FileHandle,
                              st->FileBuffer + i * STREAM_BUFFER_SIZE,
                              STREAM_BUFFER_SIZE);
 
@@ -622,21 +591,10 @@ static int File_Stream_Sample_Generic(const char *filename, int volume, int prio
     if (!IS_HANDLE_VALID(handle))
         return INVALID_AUDIO_HANDLE;
 
-    ROMCacheEntry *ce = ROMAddrCache.Get_From_String(filename);
-    if (!ce) {
-        int fh = Open_File(filename, 1);
-        if (fh == INVALID_FILE_HANDLE) {
-            return INVALID_AUDIO_HANDLE;
-        }
-
-        uint32_t romaddr = Get_ROM_Addr_File(fh);
-        uint32_t size = File_Size(fh);
-
-        ce = ROMAddrCache.Add_From_String(filename, romaddr, size);
-        Close_File(fh);
+    int fh = Open_File_ROM(filename, 1);
+    if (fh == INVALID_FILE_HANDLE) {
+        return INVALID_AUDIO_HANDLE;
     }
-
-    assert(ce);
 
     SampleTrackerType* st = &LockedData.SampleTracker[handle];
     st->Priority = priority;
@@ -645,9 +603,7 @@ static int File_Stream_Sample_Generic(const char *filename, int volume, int prio
     st->FilePendingSize = 0;
     st->Loading = real_time_start;
     st->Volume = volume;
-    st->FileHandle = -100; //fh;
-    st->ROMAddr = ce->ROMAddr;
-    st->FileSize = st->ROMAddr + ce->size;
+    st->FileHandle = fh;
     File_Stream_Preload(handle);
     return handle;
 }

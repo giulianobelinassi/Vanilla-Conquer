@@ -77,7 +77,7 @@ public:
     virtual void Close(void);
     virtual void Error(int error, int canretry = false, char const* filename = NULL);
 
-private:
+protected:
     /*
     **	This indicates the file is actually part of a resident image of the mixfile
     **	itself. In this case, the embedded file handle is invalid. All file access actually
@@ -100,9 +100,93 @@ private:
     */
     int Position;
 
+private:
     // Force these to never be invoked.
     CCFileClass const& operator=(CCFileClass const& c);
     CCFileClass(CCFileClass const&);
 };
+
+#ifdef _N64
+#include <libdragon.h>
+
+class N64ROMCCFileClass
+{
+    public:
+    N64ROMCCFileClass(void);
+
+    int Is_Available(const char *filename, int forced = false);
+    int Is_Open(void) const;
+    int Open(const char *filename, int rights = READ);
+    int Read(void* buffer, int size);
+    int Seek(int pos, int dir = SEEK_CUR);
+    int Size(void);
+    void Close(void);
+
+    private:
+
+    struct ROMCacheEntry
+    {
+      int32_t crc;
+      uint32_t ROMAddr;
+      uint32_t size;
+    };
+
+    static class ROMAddrCache
+    {
+      private:
+      enum {MAX_ENTRIES = 64};
+
+      ROMCacheEntry Elem[MAX_ENTRIES];
+      unsigned NumElem;
+
+      static int ROMCacheCmpFunc(const void *p1, const void *p2)
+      {
+        const struct ROMCacheEntry *pa = (const struct ROMCacheEntry *) p1;
+        const struct ROMCacheEntry *pb = (const struct ROMCacheEntry *) p2;
+
+        return (pa->crc > pb->crc) - (pa->crc < pb->crc);
+      }
+
+      public:
+      ROMCacheEntry *Add_From_String(const char *name, uint32_t romaddr, uint32_t size)
+      {
+        assert(NumElem < MAX_ENTRIES);
+
+        int32_t crc = Calculate_CRC(name, strlen(name));
+        Elem[NumElem].crc = crc;
+        Elem[NumElem].ROMAddr = romaddr;
+        Elem[NumElem].size = size;
+        NumElem++;
+
+        qsort(Elem, NumElem, sizeof(ROMCacheEntry), ROMCacheCmpFunc);  
+        return Get_From_CRC(crc);
+      }
+
+      ROMCacheEntry *Get_From_String(const char *name)
+      {
+        int slen = strlen(name);
+        int32_t crc = Calculate_CRC(name, slen);
+
+        return Get_From_CRC(crc);
+      }
+
+      ROMCacheEntry *Get_From_CRC(int crc)
+      {
+        ROMCacheEntry key = { .crc = crc };
+        ROMCacheEntry *ret;
+
+        ret = (ROMCacheEntry *)
+          bsearch(&key, Elem, NumElem, sizeof(ROMCacheEntry), ROMCacheCmpFunc);
+
+        return ret;
+      }
+    } ROMAddrCache;
+
+  uint32_t FileROMAddr;
+  uint32_t FileSize;
+  int Position;
+};
+
+#endif
 
 #endif

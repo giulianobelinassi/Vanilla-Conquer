@@ -48,6 +48,7 @@
 #include "debugstring.h"
 #ifdef _N64
 #include <libdragon.h>
+#include <alloca.h>
 #endif
 
 /***********************************************************************************************
@@ -455,7 +456,7 @@ int CCFileClass::Open(int rights)
             **	attached to the file handle.
             */
             char* dupfile = strdup(File_Name());
-            Open(mixfile->Filename, READ);
+            RawFileClass::Open(mixfile->Filename, READ);
             Searching(false); // Disable multi-drive search.
             Set_Name(dupfile);
             Searching(true);
@@ -479,6 +480,136 @@ int CCFileClass::Open(int rights)
     return (true);
 }
 
+#ifdef _N64
+
+class N64ROMCCFileClass::ROMAddrCache N64ROMCCFileClass::ROMAddrCache;
+
+N64ROMCCFileClass::N64ROMCCFileClass(void)
+  : FileROMAddr(0),
+    FileSize(0),
+    Position(0)
+{
+}
+
+int N64ROMCCFileClass::Is_Available(const char *filename, int forced)
+{
+  /* If the file is cached then it is certainly available.  */
+  ROMCacheEntry *e = ROMAddrCache.Get_From_String(filename);
+
+  if (e) {
+    return 1;
+  }
+
+  /* Else we rely on the underlying filesystem.  */
+  return CCFileClass(filename).Is_Available(forced);
+}
+
+int N64ROMCCFileClass::Is_Open(void) const
+{
+  /* If we have a valid ROMAddr, then return true.  */
+  if (FileROMAddr) {
+      return true;
+  }
+
+  /* Else we rely on the underlying file system.  */
+  return false;//CCFileClass::Is_Open();
+}
+
+int N64ROMCCFileClass::Open(const char *filename, int rights)
+{
+    /* Check if file is in cache.  */
+    ROMCacheEntry *e = ROMAddrCache.Get_From_String(filename);
+    if (e) {
+
+        /* Hit.  */
+        FileROMAddr = e->ROMAddr;
+        FileSize = e->size;
+
+        /* Set position to 0.  */
+        Position = 0;
+
+        return true;
+    }
+
+    CCFileClass ccfile(filename);
+    /* Try to open the file.  If ins't there is no point in continuing.  */
+    if (ccfile.Open(rights) == false) {
+        return false;
+    }
+
+    FileROMAddr = ccfile.Get_ROM_Addr();
+    FileSize = ccfile.Size();
+    /* Add this file to cache.  */
+
+    ROMAddrCache.Add_From_String(filename, FileROMAddr, FileSize);
+
+    /* We are done.  */
+    return true;
+}
+
+int N64ROMCCFileClass::Read(void *buffer, int size)
+{
+  assert(FileROMAddr && "ROMAddress not found?");
+
+  if (Position + size > FileSize) {
+      size = FileSize - Position;
+  }
+
+  uint32_t toread = FileROMAddr + Position;
+
+  if (((uint32_t)buffer ^ FileROMAddr) & 1 != 0) {
+    char *temp_buf = (char *)alloca(size + 1);
+    data_cache_hit_writeback_invalidate(temp_buf, size + 1);
+    dma_read(temp_buf + 1, toread, size);
+    memcpy(buffer, temp_buf + 1, size);
+  } else {
+    data_cache_hit_writeback_invalidate(buffer, size);
+    dma_read(buffer, toread, size);
+  }
+
+  Position += size;
+  return size;
+}
+
+int N64ROMCCFileClass::Seek(int pos, int dir)
+{
+  assert(FileROMAddr);
+
+  switch (dir) {
+      case SEEK_SET:
+        Position = pos;
+      break;
+
+      case SEEK_CUR:
+        Position += pos;
+      break;
+
+      case SEEK_END:
+        Position = FileSize;
+        return true;
+      break;
+  }
+
+  if (Position > FileSize)
+    Position = FileSize;
+
+  return true;
+}
+
+int N64ROMCCFileClass::Size(void)
+{
+  return FileSize;
+}
+
+void N64ROMCCFileClass::Close(void)
+{
+  FileROMAddr = 0;
+  FileSize = 0;
+  Position = 0;
+}
+
+#endif
+
 /***********************************************************************************
 ** Backward compatibility section.
 */
@@ -487,7 +618,37 @@ int CCFileClass::Open(int rights)
 #define MAX_OPEN_FILES 10
 #endif
 
+
 static CCFileClass Handles[MAX_OPEN_FILES];
+#ifdef _N64
+static N64ROMCCFileClass ROMHandles[10];
+
+#define ROM_INDEX_TO_FD(x)    ((x) + MAX_OPEN_FILES)
+#define ROM_FD_TO_INDEX(x)    ((x) - MAX_OPEN_FILES)
+
+int Open_File_ROM(char const* file_name, int mode)
+{
+    for (int index = 0; index < ARRAY_SIZE(ROMHandles); index++) {
+        if (!ROMHandles[index].Is_Open()) {
+            if (ROMHandles[index].Open(file_name, mode)) {
+                return ROM_INDEX_TO_FD(index);
+            }
+            break;
+        }
+    }
+    return (WWERROR);
+}
+
+uint32_t Get_ROM_Addr_File(int handle)
+{
+    handle = ROM_FD_TO_INDEX(handle);
+    if (handle != WWERROR && Handles[handle].Is_Open()) {
+        return (Handles[handle].Get_ROM_Addr());
+    }
+    return (0);
+}
+
+#endif
 
 int Open_File(char const* file_name, int mode)
 {
@@ -504,9 +665,15 @@ int Open_File(char const* file_name, int mode)
 
 void Close_File(int handle)
 {
-    if ((unsigned) handle >= MAX_OPEN_FILES) {
+#ifdef _N64
+    if (handle >= MAX_OPEN_FILES) {
+        handle = ROM_FD_TO_INDEX(handle);
+        if (handle != WWERROR && ROMHandles[handle].Is_Open()) {
+            ROMHandles[handle].Close();
+        }
         return;
     }
+#endif
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         Handles[handle].Close();
     }
@@ -514,9 +681,15 @@ void Close_File(int handle)
 
 int Read_File(int handle, void* buf, unsigned int bytes)
 {
-    if ((unsigned) handle >= MAX_OPEN_FILES) {
-        return 0;
+#ifdef _N64
+    if (handle >= MAX_OPEN_FILES) {
+        handle = ROM_FD_TO_INDEX(handle);
+        if (handle != WWERROR && ROMHandles[handle].Is_Open()) {
+            return (ROMHandles[handle].Read(buf, bytes));
+        }
+        return (0);
     }
+#endif
 
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Read(buf, bytes));
@@ -538,6 +711,12 @@ int Write_File(int handle, void const* buf, unsigned int bytes)
 
 int Find_File(char const* file_name)
 {
+#ifdef _N64
+    if(N64ROMCCFileClass().Open(file_name, READ)) {
+        return true;
+    }
+#endif
+
     CCFileClass file(file_name);
     return (file.Is_Available());
 }
@@ -549,9 +728,15 @@ int Delete_File(char const* file_name)
 
 unsigned int File_Size(int handle)
 {
-    if ((unsigned) handle >= MAX_OPEN_FILES) {
-        return 0;
+#ifdef _N64
+    if (handle >= MAX_OPEN_FILES) {
+        handle = ROM_FD_TO_INDEX(handle);
+        if (handle != WWERROR && ROMHandles[handle].Is_Open()) {
+            return (ROMHandles[handle].Size());
+        }
+        return (0);
     }
+#endif
 
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Size());
@@ -561,25 +746,21 @@ unsigned int File_Size(int handle)
 
 unsigned int Seek_File(int handle, int offset, int starting)
 {
-    if ((unsigned) handle >= MAX_OPEN_FILES) {
-        return 0;
+#ifdef _N64
+    if (handle >= MAX_OPEN_FILES) {
+        handle = ROM_FD_TO_INDEX(handle);
+        if (handle != WWERROR && ROMHandles[handle].Is_Open()) {
+            return (ROMHandles[handle].Seek(offset, starting));
+        }
+        return (0);
     }
+#endif
 
     if (handle != WWERROR && Handles[handle].Is_Open()) {
         return (Handles[handle].Seek(offset, starting));
     }
     return (0);
 }
-
-#ifdef _N64
-uint32_t Get_ROM_Addr_File(int handle)
-{
-    if (handle != WWERROR && Handles[handle].Is_Open()) {
-        return (Handles[handle].Get_ROM_Addr());
-    }
-    return (0);
-}
-#endif
 
 void WWDOS_Shutdown(void)
 {
