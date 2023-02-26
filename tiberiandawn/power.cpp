@@ -145,7 +145,7 @@ void PowerClass::One_Time(void)
     PowerButton.Width = PowWidth - 1;
     PowerButton.Height = PowHeight;
 
-    PowerShape = MFCD::Retrieve((factor) ? "HPOWER.SHP" : "POWER.SHP");
+    PowerShape = Get_Shape_Pointer((factor) ? "HPOWER.SHP" : "POWER.SHP");
     PowerBarShape = Hires_Retrieve("PWRBAR.SHP");
 }
 

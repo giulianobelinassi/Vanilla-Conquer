@@ -577,7 +577,7 @@ void BulletTypeClass::One_Time(void)
             if (file.Is_Available()) {
                 ((void const*&)bullet.ImageData) = Load_Alloc_Data(file);
             } else {
-                ((void const*&)bullet.ImageData) = MFCD::Retrieve(fullname);
+                ((void const*&)bullet.ImageData) = Get_Shape_Pointer(fullname);
             }
         }
     }

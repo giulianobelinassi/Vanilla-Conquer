@@ -567,8 +567,9 @@ void Draw_Caption(int text, int x, int y, int w)
     **	Draw the filigree at the corners of the dialog.
     */
     if (option != OPTION_NONE) {
-        CC_Draw_Shape(MFCD::Retrieve("OPTIONS.SHP"), (int)option, x + 12, y + 11, WINDOW_MAIN, SHAPE_CENTER);
-        CC_Draw_Shape(MFCD::Retrieve("OPTIONS.SHP"), (int)option + 1, x + w - 14, y + 11, WINDOW_MAIN, SHAPE_CENTER);
+        const void *options = Get_Shape_Pointer("OPTIONS.SHP");
+        CC_Draw_Shape(options, (int)option, x + 12, y + 11, WINDOW_MAIN, SHAPE_CENTER);
+        CC_Draw_Shape(options, (int)option + 1, x + w - 14, y + 11, WINDOW_MAIN, SHAPE_CENTER);
     }
 
     /*

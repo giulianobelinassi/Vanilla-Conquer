@@ -1519,7 +1519,7 @@ void UnitTypeClass::One_Time(void)
                 sprintf(buffer, "%sICON", uclass.IniName);
             }
             _makepath(fullname, NULL, NULL, buffer, ".SHP");
-            ((void const*&)uclass.CameoData) = MFCD::Retrieve(fullname);
+            ((void const*&)uclass.CameoData) = Get_Shape_Pointer(fullname);
         }
 
         /*
@@ -1528,7 +1528,7 @@ void UnitTypeClass::One_Time(void)
         // Assume funpark mode might be required. ST - 10/14/2019 11:53AM
         // if (!uclass.IsPieceOfEight || (Special.IsJurassic && AreThingiesEnabled) ) {
         _makepath(fullname, NULL, NULL, uclass.IniName, ".SHP");
-        ptr = MFCD::Retrieve(fullname);
+        ptr = Get_Shape_Pointer(fullname);
         //} else {
         //	ptr = NULL;
         //}
@@ -1551,7 +1551,7 @@ void UnitTypeClass::One_Time(void)
     **	Load the wake shapes in at this time.
     */
     if (!WakeShapes) {
-        WakeShapes = MFCD::Retrieve("WAKE.SHP");
+        WakeShapes = Get_Shape_Pointer("WAKE.SHP");
     }
 }
 

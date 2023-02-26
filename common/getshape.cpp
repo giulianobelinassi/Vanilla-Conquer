@@ -45,10 +45,14 @@
 */
 
 #include <cstddef>
+#include <assert.h>
+#include <string.h>
 
 #include "wwstd.h"
 #include "shape.h"
 #include "endianness.h"
+#include "ccfile.h"
+#include "mixfile.h"
 
 /***************************************************************************
  * Get_Shape_Size -- Fetch the size of the shape in memory.                *
@@ -358,5 +362,13 @@ int Get_Shape_Original_Height(void const* shape)
     return (shp->OriginalHeight);
 
 } /* end of Get_Shape_Original_Height */
+
+const void *Get_Shape_Pointer(const char *shpname)
+{
+    const char *dot = strrchr(shpname, '.');
+    assert(dot && strcmp(dot, ".SHP") == 0 && "Invalid shape extension");
+
+    return MixFileClass<CCFileClass>::Retrieve(shpname);
+}
 
 /************************* end of getshape.cpp *****************************/

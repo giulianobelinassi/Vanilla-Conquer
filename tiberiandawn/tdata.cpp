@@ -807,7 +807,7 @@ void TerrainTypeClass::Init(TheaterType theater)
                 **	Load in the appropriate object shape data.
                 */
                 _makepath(fullname, NULL, NULL, terrain.IniName, Theaters[theater].Suffix);
-                ((void const*&)terrain.ImageData) = MFCD::Retrieve(fullname);
+                ((void const*&)terrain.ImageData) = Get_Shape_Pointer(fullname);
 
                 IsTheaterShape = true;
                 if (terrain.RadarIcon)

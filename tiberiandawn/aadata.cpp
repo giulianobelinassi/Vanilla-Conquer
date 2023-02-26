@@ -418,17 +418,17 @@ void AircraftTypeClass::One_Time(void)
             sprintf(buffer, "%sICON", uclass.IniName);
         }
         _makepath(fullname, NULL, NULL, buffer, ".SHP");
-        ((void const*&)uclass.CameoData) = MFCD::Retrieve(fullname);
+        ((void const*&)uclass.CameoData) = Get_Shape_Pointer(fullname);
 
         /*
         **	Generic shape for all houses load method.
         */
         _makepath(fullname, NULL, NULL, uclass.IniName, ".SHP");
-        ((void const*&)uclass.ImageData) = MFCD::Retrieve(fullname);
+        ((void const*&)uclass.ImageData) = Get_Shape_Pointer(fullname);
     }
 
-    LRotorData = MFCD::Retrieve("LROTOR.SHP");
-    RRotorData = MFCD::Retrieve("RROTOR.SHP");
+    LRotorData = Get_Shape_Pointer("LROTOR.SHP");
+    RRotorData = Get_Shape_Pointer("RROTOR.SHP");
 }
 
 /***********************************************************************************************
@@ -722,7 +722,7 @@ void AircraftTypeClass::Init(TheaterType theater)
 
                 sprintf(buffer, "%.4sICNH", uclass.IniName);
                 _makepath(fullname, NULL, NULL, buffer, Theaters[theater].Suffix);
-                cameo_ptr = MFCD::Retrieve(fullname);
+                cameo_ptr = Get_Shape_Pointer(fullname);
                 if (cameo_ptr) {
                     ((void const*&)uclass.CameoData) = cameo_ptr;
                 }

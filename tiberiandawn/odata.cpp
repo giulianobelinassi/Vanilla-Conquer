@@ -867,7 +867,7 @@ void OverlayTypeClass::Init(TheaterType theater)
             } else {
                 _makepath(fullname, NULL, NULL, overlay.IniName, ".SHP");
             }
-            ((void const*&)overlay.ImageData) = MFCD::Retrieve(fullname);
+            ((void const*&)overlay.ImageData) = Get_Shape_Pointer(fullname);
 
             IsTheaterShape = overlay.IsTheater;
             if (overlay.RadarIcon)

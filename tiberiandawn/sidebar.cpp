@@ -1168,7 +1168,7 @@ void SidebarClass::StripClass::One_Time(int)
             sprintf(buffer, "%sICON", _file[lp]);
         }
         _makepath(fullname, NULL, NULL, buffer, ".SHP");
-        SpecialShapes[lp] = MFCD::Retrieve(fullname);
+        SpecialShapes[lp] = Get_Shape_Pointer(fullname);
     }
 }
 
@@ -1297,7 +1297,7 @@ void SidebarClass::StripClass::Init_Theater(TheaterType theater)
             sprintf(buffer, "%sICON", _file[lp]);
         }
         _makepath(fullname, NULL, NULL, buffer, Theaters[theater].Suffix);
-        cameo_ptr = MFCD::Retrieve(fullname);
+        cameo_ptr = Get_Shape_Pointer(fullname);
         if (cameo_ptr) {
             SpecialShapes[lp] = cameo_ptr;
         }

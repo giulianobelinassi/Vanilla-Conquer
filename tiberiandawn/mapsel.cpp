@@ -1077,7 +1077,7 @@ void Map_Selection(void)
         /*
         ** Now it's time to highlight the country we're going to.
         */
-        void const* countryshape = MFCD::Retrieve(house == HOUSE_GOOD ? "COUNTRYE.SHP" : "COUNTRYA.SHP");
+        void const* countryshape = Get_Shape_Pointer(house == HOUSE_GOOD ? "COUNTRYE.SHP" : "COUNTRYA.SHP");
 
         Hide_Mouse();
         // erase "Select country to attack"

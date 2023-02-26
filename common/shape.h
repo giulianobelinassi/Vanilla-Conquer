@@ -189,6 +189,8 @@ int Get_Shape_Size(void const* shape);
 int Get_Shape_Scaled_Width(void const* shape, int scale);
 int Get_Shape_Scaled_Height(void const* shape, int scale);
 
+const void* Get_Shape_Pointer(const char *shpname);
+
 #endif // SHAPE_H
 
 /****************************** End of shape.h *****************************/

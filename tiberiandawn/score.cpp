@@ -726,8 +726,8 @@ void ScoreClass::Presentation(void)
 
     // Load up the shapes for the Nod score screen
     if (house == HOUSE_GOOD) {
-        yellowptr = MFCD::Retrieve("BAR3YLW.SHP");
-        redptr = MFCD::Retrieve("BAR3RED.SHP");
+        yellowptr = Get_Shape_Pointer("BAR3YLW.SHP");
+        redptr = Get_Shape_Pointer("BAR3RED.SHP");
     }
 
     /* Change to the six-point font for Text_Print */
@@ -761,11 +761,11 @@ void ScoreClass::Presentation(void)
     /*
     ** Background's up, so now load various shapes and animations
     */
-    void const* timeshape = MFCD::Retrieve("TIME.SHP");
+    void const* timeshape = Get_Shape_Pointer("TIME.SHP");
     ScoreObjs[0] = new ScoreTimeClass(233, 2, timeshape, 30, 4);
 
-    void const* hiscore1shape = MFCD::Retrieve("HISCORE1.SHP");
-    void const* hiscore2shape = MFCD::Retrieve("HISCORE2.SHP");
+    void const* hiscore1shape = Get_Shape_Pointer("HISCORE1.SHP");
+    void const* hiscore2shape = Get_Shape_Pointer("HISCORE2.SHP");
     ScoreObjs[1] = new ScoreTimeClass(4, 97, hiscore1shape, 10, 4);
     ScoreObjs[2] = new ScoreTimeClass(8, 172, hiscore2shape, 10, 4);
 
@@ -777,7 +777,7 @@ void ScoreClass::Presentation(void)
         /*
         ** load the logo
         */
-        void const* logoptr = MFCD::Retrieve("LOGOS.SHP");
+        void const* logoptr = Get_Shape_Pointer("LOGOS.SHP");
         CC_Draw_Shape(logoptr, 1, 0, 0, WINDOW_MAIN, SHAPE_WIN_REL, 0, 0);
 
         Bit_It_In_Scale(0, 0, 128, 104 - 16, &SysMemPage, PseudoSeenBuff, &SeenBuff, 1);
@@ -1104,9 +1104,9 @@ void ScoreClass::Do_Nod_Buildings_Graph(void)
     InfantryTypeClass const* ramboclass;
     int factor = 1 + Get_Resolution_Factor();
 
-    void const* factptr = MFCD::Retrieve("FACT.SHP");
-    void const* rmboptr = MFCD::Retrieve("RMBO.SHP");
-    void const* fball1ptr = MFCD::Retrieve("FBALL1.SHP");
+    void const* factptr = Get_Shape_Pointer("FACT.SHP");
+    void const* rmboptr = Get_Shape_Pointer("RMBO.SHP");
+    void const* fball1ptr = Get_Shape_Pointer("FBALL1.SHP");
     ramboclass = &InfantryTypeClass::As_Reference(INFANTRY_E5);
 
     /*
@@ -1325,8 +1325,8 @@ void ScoreClass::Do_Nod_Casualties_Graph(void)
     int i, gdikilled, nodkilled, civkilled, max;
     int factor = 1 + Get_Resolution_Factor();
 
-    void const* e1ptr = MFCD::Retrieve("E1.SHP");
-    void const* c1ptr = MFCD::Retrieve("C1.SHP");
+    void const* e1ptr = Get_Shape_Pointer("E1.SHP");
+    void const* c1ptr = Get_Shape_Pointer("C1.SHP");
 
     gdikilled = GKilled;
     nodkilled = NKilled;
@@ -1467,7 +1467,7 @@ void ScoreClass::Show_Credits(int house, char const pal[])
     int min, add;
     int factor = 1 + Get_Resolution_Factor();
 
-    void const* credshape = MFCD::Retrieve("CREDS.SHP");
+    void const* credshape = Get_Shape_Pointer("CREDS.SHP");
 
     Alloc_Object(new ScorePrintClass(TXT_SCORE_ENDCRED, _credtx[house], _credty[house], pal));
     Call_Back_Delay(15);

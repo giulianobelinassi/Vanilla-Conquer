@@ -3923,7 +3923,7 @@ void const* Hires_Retrieve(const char* name)
     } else {
         strcpy(filename, name);
     }
-    return (MFCD::Retrieve(filename));
+    return (Get_Shape_Pointer(filename));
 }
 int Get_Resolution_Factor(void)
 {

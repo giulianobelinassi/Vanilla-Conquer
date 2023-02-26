@@ -271,7 +271,7 @@ void MouseClass::One_Time(void)
     if (file.Is_Available()) {
         MouseShapes = Load_Alloc_Data(&file);
     } else {
-        MouseShapes = MFCD::Retrieve("MOUSE.SHP");
+        MouseShapes = Get_Shape_Pointer("MOUSE.SHP");
     }
 }
 

@@ -214,7 +214,7 @@ void DisplayClass::One_Time(void)
     */
     TransIconset = MFCD::Retrieve("TRANS.ICN");
 
-    ShadowShapes = MFCD::Retrieve("SHADOW.SHP");
+    ShadowShapes = Get_Shape_Pointer("SHADOW.SHP");
 
     Set_View_Dimensions(0, Map.Get_Tab_Height());
 
