@@ -23,8 +23,7 @@
   * into screen, with the consequence of losing a few lines.
   **/
 
-// Uncomment this to show FPS on screen.
-//#define SHOW_FPS
+extern "C" void memcpy32(void* dst, const void* src, unsigned int wdcount);
 
 /* Function used to pause the console for debugging.  */
 void DS_Pause(const char* format, ...)
@@ -133,7 +132,7 @@ public:
     inline void Set_Cursor_Palette(const u16* palette)
     {
         // Copy the palette to the sprite engine.
-        dmaCopy(palette, SPRITE_PALETTE, 2 * 256);
+        dmaCopyWords(3, palette, SPRITE_PALETTE, 2 * 256);
     }
 
     inline void Set_Video_Cursor(void* cursor, int w, int h, int hotx, int hoty)
@@ -154,7 +153,7 @@ public:
             /* On retail DS writes 8bit writes to VRAM are discarded.  So
                create a temporary surface to transform the bitmap shape
                into tiled.  */
-            uint8_t tiled_surface[24 * 32];
+            static uint8_t tiled_surface[24 * 32];
             memset(tiled_surface, 0, sizeof(tiled_surface));
 
             // DS sprites are tiled, so we remap the texture to be displayed
@@ -173,7 +172,8 @@ public:
                 }
             }
             /* Blt to sprite.  */
-            memcpy(dst, tiled_surface, 32*24);
+            DC_FlushRange(tiled_surface, 32*24);
+            dmaCopyWords(3, tiled_surface, dst, 32*24);
         }
     }
 
@@ -314,11 +314,6 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     // If the ARM9 is set to 67MHz, set it to 133MHz now.
     setCpuClock(true);
 
-#ifdef SHOW_FPS
-    // Start timer 0, used to measure FPS.
-    timerStart(0, ClockDivider_1024, 0, NULL);
-#endif
-
     // Allocate 128Kb for the console on the upper screen.  It is a bit
     // overkill, but we got plenty of VRAM so far so it is OK.
     vramSetBankC(VRAM_C_SUB_BG_0x06200000);
@@ -414,9 +409,16 @@ unsigned int Get_Free_Video_Memory(void)
  * HISTORY:                                                                                    *
  *    1/12/96 9:14AM ST : Created                                                              *
  *=============================================================================================*/
+extern bool OverlappedVideoBlits;
 unsigned Get_Video_Hardware_Capabilities(void)
 {
-    return 0;
+    // We do not implement overlapping capabilities on Blt. It is also strategically faster to
+    // disable this flag because it will force a blit from seenbuffer to hidbuffer in order
+    // to scroll the screen, which is faster than bliting from main RAM to main RAM.
+    OverlappedVideoBlits = false;
+
+    // Return the features we implement.
+    return VIDEO_BLITTER | VIDEO_COLOR_FILL;
 }
 
 /***********************************************************************************************
@@ -521,6 +523,9 @@ void Update_HWCursor()
 class VideoSurfaceNDS;
 static VideoSurfaceNDS* frontSurface = nullptr;
 
+// The hidden surface buffer.
+static char HidSurfaceBuf[320 * 200];
+
 class VideoSurfaceNDS : public VideoSurface
 {
 public:
@@ -539,6 +544,12 @@ public:
                 surface = (char*)bgGetGfxPtr(bg3);
                 windowSurface = surface;
                 frontSurface = this;
+            } else {
+                // The hid surface will be allocated in main RAM. The game
+                // uses a software engine that memcpy the graphics, and in
+                // this case it is faster to allocate this in main RAM.
+                Pitch = 320;
+                surface = HidSurfaceBuf;
             }
         } else {
             swiWaitForVBlank();
@@ -574,7 +585,7 @@ public:
 
     virtual bool IsReadyToBlit()
     {
-        return false;
+        return true;
     }
 
     virtual bool LockWait()
@@ -587,12 +598,98 @@ public:
         return true;
     }
 
+    // Use the DMA controller to implement the BitBlt algorithm.
     virtual void Blt(const Rect& destRect, VideoSurface* src, const Rect& srcRect, bool mask)
     {
+      short src_pitch = src->GetPitch();
+      char *src_ptr = static_cast<char*>(src->GetData());
+
+      // Move head of src_ptr to the rectangle upper left corner.
+      src_ptr += srcRect.Y * src_pitch + srcRect.X;
+
+      // Do the same thing for our dst surface.
+      short dst_pitch = this->GetPitch();
+      char *dst_ptr = static_cast<char*>(this->GetData());
+
+      dst_ptr += destRect.Y * dst_pitch + destRect.X;
+
+      short w = srcRect.Width;
+      short h = srcRect.Height;
+
+      bool src_and_dst_in_main_ram = (uintptr_t) dst_ptr < 0x06000000 &&
+                                     (uintptr_t) src_ptr < 0x06000000;
+
+      if (src_and_dst_in_main_ram) {
+        // In case src and dst is in main ram, then memcpy is simply faster.
+        w = w >> 2;
+        iprintf("blit main ram to main ram\n");
+        while (h-- > 0) {
+          memcpy32(dst_ptr, src_ptr, w);
+          src_ptr += src_pitch;
+          dst_ptr += dst_pitch;
+        }
+      } else {
+        short unroll = h / 4;
+        h = h % 4;
+        while (unroll-- > 0) {
+          dmaCopyWordsAsynch(0, src_ptr, dst_ptr, w);
+          src_ptr += src_pitch;
+          dst_ptr += dst_pitch;
+          dmaCopyWordsAsynch(1, src_ptr, dst_ptr, w);
+          src_ptr += src_pitch;
+          dst_ptr += dst_pitch;
+          dmaCopyWordsAsynch(2, src_ptr, dst_ptr, w);
+          src_ptr += src_pitch;
+          dst_ptr += dst_pitch;
+          dmaCopyWordsAsynch(3, src_ptr, dst_ptr, w);
+          src_ptr += src_pitch;
+          dst_ptr += dst_pitch;
+        }
+
+        while (h-- > 0) {
+          dmaCopyWordsAsynch(h, src_ptr, dst_ptr, w);
+          src_ptr += src_pitch;
+          dst_ptr += dst_pitch;
+        }
+      }
+
     }
 
     virtual void FillRect(const Rect& rect, unsigned char color)
     {
+      short dma = 0;
+
+      // Do the same thing for our dst surface.
+      short dst_pitch = this->GetPitch();
+      char *dst_ptr = static_cast<char*>(this->GetData());
+
+      dst_ptr += rect.Y * dst_pitch + rect.X;
+
+      short w = rect.Width;
+      short h = rect.Height;
+
+      bool buffer_in_vram = (uintptr_t) dst_ptr >= 0x06000000;
+
+      if (buffer_in_vram) {
+        u32 c32 = color;
+        c32 = c32 | c32 << 8 | c32 << 16 | c32 << 24;
+
+        DMA_FILL(dma) = c32;
+        DMA_SRC(dma) = (uint32)&DMA_FILL(dma);
+
+        while (h-- > 0) {
+          DMA_DEST(dma) = (uint32)dst_ptr;
+          DMA_CR(dma) = DMA_SRC_FIX | DMA_COPY_WORDS | (w>>2);
+
+          dst_ptr += dst_pitch;
+          dma = (dma + 1) % 4;
+        }
+      } else {
+        while (h-- > 0) {
+          memset(dst_ptr, color, w);
+          dst_ptr += dst_pitch;
+        }
+      }
     }
 
     inline void RenderSurface()
@@ -605,59 +702,6 @@ private:
     char* windowSurface;
     GBC_Enum flags;
 };
-
-// Blits the argument page to the front buffer.  This function is optimized to
-// use the DMA, which should be faster on larger copies.
-void DS_Blit_Display(GraphicViewPortClass& HidPage, GraphicViewPortClass& SeenPage)
-{
-    //size_t ram_free = Get_Free_RAM();
-    //printf("Free RAM: %d\n", ram_free);
-
-    const unsigned char* src = (const unsigned char*)HidPage.Get_Offset();
-    unsigned char* dst = (unsigned char*)frontSurface->GetData();
-
-    int dst_pitch = frontSurface->GetPitch();
-    int h = HidPage.Get_Height();
-    int w = HidPage.Get_Width();
-
-    DC_FlushRange(src, w * h);
-
-    while (h > 0) {
-        dmaCopyWordsAsynch(0, src, dst, w);
-        dst += dst_pitch;
-        src += w;
-        dmaCopyWordsAsynch(1, src, dst, w);
-        dst += dst_pitch;
-        src += w;
-        dmaCopyWordsAsynch(2, src, dst, w);
-        dst += dst_pitch;
-        src += w;
-        dmaCopyWordsAsynch(3, src, dst, w);
-        dst += dst_pitch;
-        src += w;
-        h -= 4;
-    }
-
-#ifdef SHOW_FPS
-    static long long now;
-    long long last, delta;
-    char textbuf[16];
-
-    const unsigned timer_speed = BUS_CLOCK / 1024;
-
-    last = now;
-    now += timerElapsed(0);
-    delta = now - last;
-
-    if (delta != 0) {
-        unsigned fps = timer_speed / delta;
-        if (fps > 99)
-            fps = 99;
-        snprintf(textbuf, 16, "%4llu", timer_speed / delta);
-        SeenPage.Print(textbuf, 12, HidPage.Get_Height() - 20, GREEN, BLACK);
-    }
-#endif
-}
 
 /*
 ** Video

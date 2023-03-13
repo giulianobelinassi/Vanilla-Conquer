@@ -287,7 +287,7 @@ void* WWMouseClass::Set_Cursor(int xhotspot, int yhotspot, void* cursor)
 void WWMouseClass::Low_Hide_Mouse()
 {
 // ST - 1/3/2019 10:50AM
-#if !defined(REMASTER_BUILD) && !defined(SDL2_BUILD)
+#if !defined(REMASTER_BUILD) && !defined(SDL2_BUILD) && !defined(_NDS)
     if (!State) {
         if (MouseBuffX != -1 || MouseBuffY != -1) {
             if (Screen->Lock()) {
