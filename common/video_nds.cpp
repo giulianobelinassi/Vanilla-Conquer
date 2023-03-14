@@ -24,6 +24,7 @@
   **/
 
 extern "C" void memcpy32(void* dst, const void* src, unsigned int wdcount);
+void *tonccpy(void *dst, const void *src, size_t size);
 
 /* Function used to pause the console for debugging.  */
 void DS_Pause(const char* format, ...)
@@ -528,6 +529,8 @@ static VideoSurfaceNDS* frontSurface = nullptr;
 // The hidden surface buffer.
 static char HidSurfaceBuf[320 * 200];
 
+#define ALIGNED(ptr, n) (((uintptr_t)(ptr) % (n)) == 0)
+
 class VideoSurfaceNDS : public VideoSurface
 {
 public:
@@ -621,8 +624,6 @@ public:
       bool src_in_main_ram = (uintptr_t) src_ptr < 0x06000000;
       bool dst_in_main_ram = (uintptr_t) dst_ptr < 0x06000000;
 
-      //u32 start = cpuGetTiming();
-
       if (src_in_main_ram && dst_in_main_ram) {
         // In case src and dst is in main ram, then memcpy is simply faster.
         w = w >> 2;
@@ -633,80 +634,147 @@ public:
         }
       } else {
         short dma = 0;
+        int flushrange = 320*(h - 1) + w;
 
         // Careful with alignment.
-        short src_misalign = ((uintptr_t)src_ptr % 4);
-        short dst_misalign = ((uintptr_t)dst_ptr % 4);
-
-        short src_misalign2 = ((uintptr_t)src_ptr % 2);
-        short dst_misalign2 = ((uintptr_t)dst_ptr % 2);
-
-        if (src_misalign == dst_misalign) {
-          char *src = src_ptr;
-          char *dst = dst_ptr;
-
-          if (src_misalign) {
-            for (short i = 0; i < h; i++) {
-              memcpy(dst, src, src_misalign);
-              src += src_pitch;
-              dst += dst_pitch;
-            }
+        if (ALIGNED(src_ptr, 4) && ALIGNED(dst_ptr, 4)) {
+          if (src_in_main_ram) {
+            DC_FlushRange(src_ptr, flushrange);
           }
-
-          if (src_in_main_ram)
-            DC_FlushRange(src_ptr, 320*200);
           else if (dst_in_main_ram)
-            DC_FlushRange(dst_ptr, 320*200);
+            DC_FlushRange(dst_ptr, flushrange);
 
-          src_ptr += src_misalign;
-          dst_ptr += dst_misalign;
-          w -= src_misalign;
+          // Unroll iterations:
+          short h_div = h / 4;
+          short h_mod = h % 4;
 
-          for (short i = 0; i < h; ++i) {
-            dmaCopyWordsAsynch(dma, src_ptr, dst_ptr, w);
+          for (short i = 0; i < h_div; i++) {
+            dmaCopyWordsAsynch(0, src_ptr, dst_ptr, w);
             src_ptr += src_pitch;
             dst_ptr += dst_pitch;
-            dma = (dma + 1) % 4;
-          }
-        } else if (src_misalign2 == dst_misalign2) {
-          char *src = src_ptr;
-          char *dst = dst_ptr;
-
-          if (src_misalign2) {
-            for (short i = 0; i < h; i++) {
-              *dst = *src;
-              src += src_pitch;
-              dst += dst_pitch;
-            }
-
-            src_ptr++;
-            dst_ptr++;
-            w -= 1;
-          }
-
-          if (src_in_main_ram)
-            DC_FlushRange(src_ptr, 320*200);
-          else if (dst_in_main_ram)
-            DC_FlushRange(dst_ptr, 320*200);
-
-          for (short i = 0; i < h; ++i) {
-            dmaCopyHalfWordsAsynch(dma, src_ptr, dst_ptr, w);
+            dmaCopyWordsAsynch(1, src_ptr, dst_ptr, w);
             src_ptr += src_pitch;
             dst_ptr += dst_pitch;
-            dma = (dma + 1) % 4;
+            dmaCopyWordsAsynch(2, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+            dmaCopyWordsAsynch(3, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
           }
+
+          for (short i = 0; i < h_mod; i++) {
+            dmaCopyWordsAsynch(i, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+          }
+
+
+        } else if (ALIGNED(src_ptr, 2) && ALIGNED(dst_ptr, 2)) {
+
+          if (src_in_main_ram)
+            DC_FlushRange(src_ptr, flushrange);
+          else if (dst_in_main_ram)
+            DC_FlushRange(dst_ptr, flushrange);
+
+          // Unroll iterations:
+          short h_div = h / 4;
+          short h_mod = h % 4;
+          for (short i = 0; i < h_div; i++) {
+            dmaCopyHalfWordsAsynch(0, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+            dmaCopyHalfWordsAsynch(1, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+            dmaCopyHalfWordsAsynch(2, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+            dmaCopyHalfWordsAsynch(3, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+          }
+
+          for (short i = 0; i < h_mod; i++) {
+            dmaCopyHalfWordsAsynch(i, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+          }
+
         } else {
           // No align fix possible.
+
+          //u32 start = cpuGetTiming();
+
+          short dst_unalign = (uintptr_t)(dst_ptr) & 1;
+                             
+
+          for (short i = 0; i < h; i++) {
+            short size = w;
+            
+            unsigned short *dst16 = (unsigned short *) dst_ptr;
+            unsigned char *src8 = (unsigned char *) src_ptr;
+
+            if (dst_unalign) {
+              dst16 = (unsigned short *) ((uintptr_t)dst16 & ~1);
+              *dst16++ = (*dst16 & 0xFF) | *src8++ << 8;
+              size--;
+            }
+
+            int count = size/2;
+            while(count--)
+            {
+              *dst16++ = src8[0] | src8[1]<<8;
+              src8 += 2;
+            }
+
+            if (w & 1)
+              *dst16 = (*dst16 &~ 0xFF) | *src8;
+            
+            
+            dst_ptr += dst_pitch;
+            src_ptr += src_pitch;
+          }
+
+#if 0
+          short src_unalign = (((uintptr_t)(src_ptr) + 3) & ~3) - 
+                              (uintptr_t)(src_ptr);
+
           for (short i = 0; i < h; ++i) {
-            memcpy(dst_ptr, src_ptr, w);
+            unsigned char *dst_ptr8 = (unsigned char*)(dst_ptr);
+            unsigned char *src_ptr8 = (unsigned char*)(src_ptr);
+
+            for (short i = 0; i < src_unalign; i++) {
+              *dst_ptr8++ = *src_ptr8++;
+            }
+
+            unsigned int *src_ptr32 = (unsigned int *)(src_ptr8);
+            short count = (w - src_unalign) / 4;
+            //short remain = (w - src_unalign) % 4;
+
+            while(count--) {
+              unsigned int val = *src_ptr32++;
+              *dst_ptr8++ = val & 0xFF;
+              *dst_ptr8++ = (val >> 8) & 0xFF;
+              *dst_ptr8++ = (val >> 16) & 0xFF;
+              *dst_ptr8++ = (val >> 24) & 0xFF;
+            }
+/*
+            src_ptr8 = (unsigned char*)src_ptr32;
+            while (remain--) {
+              *dst_ptr8++ = *src_ptr8++;
+            }
+*/
             src_ptr += src_pitch;
             dst_ptr += dst_pitch;
           }
+#endif
+          //u32 end = cpuGetTiming();
+          //printf("Ticks: %lu\n", end - start);
 
         }
       }
-      //u32 end = cpuGetTiming();
-      //printf("Ticks: %lu\n", end - start);
+
 
     }
 
