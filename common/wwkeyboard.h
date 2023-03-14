@@ -758,7 +758,7 @@ public:
     KeyASCIIType To_ASCII(unsigned short num);
     bool Down(unsigned short key);
 
-#ifdef SDL2_BUILD
+#if defined(SDL2_BUILD) || defined(_NDS)
     bool Is_Gamepad_Active();
     void Open_Controller();
     void Close_Controller();
@@ -840,6 +840,8 @@ private:
     int16_t ControllerRightYAxis = 0;
     uint32_t LastControllerTime = 0;
     float ControllerSpeedBoost = 1;
+#endif
+#if defined(SDL2_BUILD) || defined(_NDS)
     bool AnalogScrollActive = false;
     ScrollDirType ScrollDirection = SDIR_NONE;
 #endif

@@ -54,6 +54,7 @@
 #include "wwkeyboard.h"
 #include "video.h"
 #include "miscasm.h"
+#include "face.h"
 #include <string.h>
 #include <cmath>
 #include <cstdlib>
@@ -735,6 +736,26 @@ void WWKeyboardClass::Fill_Buffer_From_System(void)
             } else if (keys_up & KEY_LEFT) {
                 Put_Key_Message(VK_4, true);
             }
+        } else { // Handle scrolling
+            AnalogScrollActive = false;
+            int x = 0, y = 0;
+            if (keys_current & KEY_UP) {
+                y = -1;
+            }
+            else if (keys_current & KEY_DOWN) {
+                y = 1;
+            }
+            if (keys_current & KEY_RIGHT) {
+                x = 1;
+            }
+            else if (keys_current & KEY_LEFT) {
+                x = -1;
+            }
+
+            if (x || y) {
+              AnalogScrollActive = true;
+              ScrollDirection = (ScrollDirType)Desired_Facing8(0, 0, x, y);
+            }
         }
         if (keys_down & KEY_START) {
             Put_Key_Message(VK_ESCAPE, false);
@@ -945,7 +966,8 @@ void WWKeyboardClass::Handle_Controller_Button_Event(const SDL_ControllerButtonE
         Put_Mouse_Message(key, x, y, button.state == SDL_RELEASED);
     }
 }
-
+#endif
+#if defined(SDL2_BUILD) || defined(_NDS)
 bool WWKeyboardClass::Is_Analog_Scroll_Active()
 {
     return AnalogScrollActive;

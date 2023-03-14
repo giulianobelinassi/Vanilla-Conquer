@@ -319,6 +319,8 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     vramSetBankC(VRAM_C_SUB_BG_0x06200000);
     videoSetModeSub(MODE_0_2D);
 
+    cpuStartTiming(0);
+
     // Initialize the console on the top screen.
     consoleInit(&cs0, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, false, true);
 
@@ -616,50 +618,100 @@ public:
       short w = srcRect.Width;
       short h = srcRect.Height;
 
-      bool src_and_dst_in_main_ram = (uintptr_t) dst_ptr < 0x06000000 &&
-                                     (uintptr_t) src_ptr < 0x06000000;
+      bool src_in_main_ram = (uintptr_t) src_ptr < 0x06000000;
+      bool dst_in_main_ram = (uintptr_t) dst_ptr < 0x06000000;
 
-      if (src_and_dst_in_main_ram) {
+      //u32 start = cpuGetTiming();
+
+      if (src_in_main_ram && dst_in_main_ram) {
         // In case src and dst is in main ram, then memcpy is simply faster.
         w = w >> 2;
-        iprintf("blit main ram to main ram\n");
         while (h-- > 0) {
           memcpy32(dst_ptr, src_ptr, w);
           src_ptr += src_pitch;
           dst_ptr += dst_pitch;
         }
       } else {
-        short unroll = h / 4;
-        h = h % 4;
-        while (unroll-- > 0) {
-          dmaCopyWordsAsynch(0, src_ptr, dst_ptr, w);
-          src_ptr += src_pitch;
-          dst_ptr += dst_pitch;
-          dmaCopyWordsAsynch(1, src_ptr, dst_ptr, w);
-          src_ptr += src_pitch;
-          dst_ptr += dst_pitch;
-          dmaCopyWordsAsynch(2, src_ptr, dst_ptr, w);
-          src_ptr += src_pitch;
-          dst_ptr += dst_pitch;
-          dmaCopyWordsAsynch(3, src_ptr, dst_ptr, w);
-          src_ptr += src_pitch;
-          dst_ptr += dst_pitch;
-        }
+        short dma = 0;
 
-        while (h-- > 0) {
-          dmaCopyWordsAsynch(h, src_ptr, dst_ptr, w);
-          src_ptr += src_pitch;
-          dst_ptr += dst_pitch;
+        // Careful with alignment.
+        short src_misalign = ((uintptr_t)src_ptr % 4);
+        short dst_misalign = ((uintptr_t)dst_ptr % 4);
+
+        short src_misalign2 = ((uintptr_t)src_ptr % 2);
+        short dst_misalign2 = ((uintptr_t)dst_ptr % 2);
+
+        if (src_misalign == dst_misalign) {
+          char *src = src_ptr;
+          char *dst = dst_ptr;
+
+          if (src_misalign) {
+            for (short i = 0; i < h; i++) {
+              memcpy(dst, src, src_misalign);
+              src += src_pitch;
+              dst += dst_pitch;
+            }
+          }
+
+          if (src_in_main_ram)
+            DC_FlushRange(src_ptr, 320*200);
+          else if (dst_in_main_ram)
+            DC_FlushRange(dst_ptr, 320*200);
+
+          src_ptr += src_misalign;
+          dst_ptr += dst_misalign;
+          w -= src_misalign;
+
+          for (short i = 0; i < h; ++i) {
+            dmaCopyWordsAsynch(dma, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+            dma = (dma + 1) % 4;
+          }
+        } else if (src_misalign2 == dst_misalign2) {
+          char *src = src_ptr;
+          char *dst = dst_ptr;
+
+          if (src_misalign2) {
+            for (short i = 0; i < h; i++) {
+              *dst = *src;
+              src += src_pitch;
+              dst += dst_pitch;
+            }
+
+            src_ptr++;
+            dst_ptr++;
+            w -= 1;
+          }
+
+          if (src_in_main_ram)
+            DC_FlushRange(src_ptr, 320*200);
+          else if (dst_in_main_ram)
+            DC_FlushRange(dst_ptr, 320*200);
+
+          for (short i = 0; i < h; ++i) {
+            dmaCopyHalfWordsAsynch(dma, src_ptr, dst_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+            dma = (dma + 1) % 4;
+          }
+        } else {
+          // No align fix possible.
+          for (short i = 0; i < h; ++i) {
+            memcpy(dst_ptr, src_ptr, w);
+            src_ptr += src_pitch;
+            dst_ptr += dst_pitch;
+          }
+
         }
       }
+      //u32 end = cpuGetTiming();
+      //printf("Ticks: %lu\n", end - start);
 
     }
 
     virtual void FillRect(const Rect& rect, unsigned char color)
     {
-      short dma = 0;
-
-      // Do the same thing for our dst surface.
       short dst_pitch = this->GetPitch();
       char *dst_ptr = static_cast<char*>(this->GetData());
 
@@ -671,18 +723,16 @@ public:
       bool buffer_in_vram = (uintptr_t) dst_ptr >= 0x06000000;
 
       if (buffer_in_vram) {
+
         u32 c32 = color;
         c32 = c32 | c32 << 8 | c32 << 16 | c32 << 24;
 
-        DMA_FILL(dma) = c32;
-        DMA_SRC(dma) = (uint32)&DMA_FILL(dma);
+        short w_cpu = w % 4;
 
-        while (h-- > 0) {
-          DMA_DEST(dma) = (uint32)dst_ptr;
-          DMA_CR(dma) = DMA_SRC_FIX | DMA_COPY_WORDS | (w>>2);
-
+        for (short i = 0; i < h; i++) {
+          dmaFillWords(c32, dst_ptr, w);
+          memset(dst_ptr + ((w >> 2) << 2), c32, w_cpu);
           dst_ptr += dst_pitch;
-          dma = (dma + 1) % 4;
         }
       } else {
         while (h-- > 0) {
