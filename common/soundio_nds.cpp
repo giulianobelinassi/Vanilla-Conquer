@@ -10,6 +10,8 @@
 #include <nds/system.h>
 #include "audio_fifocommon.h"
 
+#include "timer.h"
+
 /** Sound interface between C&C and the ARM7 chip.
   *
   * Author: mrparrot (aka giulianob)
@@ -384,11 +386,82 @@ bool Sample_Status(int handle)
     return false;
 };
 
+static unsigned Get_Sample_Length_In_Ticks(const void *sample)
+{
+    AUDHeaderType raw_header;
+    memcpy(&raw_header, sample, sizeof(raw_header));
+
+    short bits = (raw_header.Flags & 2) ? 16 : 8;
+    short frequency = raw_header.Rate;
+    int size = raw_header.UncompSize;
+
+    // We don't support anything lower than 20000 hz.
+    if (frequency < 24000 && frequency > 20000) {
+        frequency = 22050;
+    }
+
+    unsigned ticks = (size * 60) / (frequency * (bits >> 3));
+    return ticks;
+}
+
+// Class to track the duration of samples without messaging the ARM9.  Use the
+// time the sample would take to play instead of actually checking if it is
+// playing.
+static class SampleTimeCache {
+  enum { MAX_SAMPLE_TIMES = 2 };
+
+  struct SampleTime
+  {
+    const void *Sample;
+    unsigned long long Ticktime;
+  } SampleTimes[MAX_SAMPLE_TIMES];
+
+  public:
+
+  void Insert_Sample(const void *sample)
+  {
+    unsigned long long smallest = UINT64_MAX;
+    struct SampleTime *st = NULL;
+
+    for (short i = 0; i < MAX_SAMPLE_TIMES; i++) {
+      if (SampleTimes[i].Sample == sample) {
+        st = &SampleTimes[i];
+        break;
+      }
+
+      if (SampleTimes[i].Ticktime < smallest) {
+        smallest = SampleTimes[i].Ticktime;
+        st = &SampleTimes[i];
+      }
+    }
+
+    if (st) {
+      unsigned ticks = Get_Sample_Length_In_Ticks(sample);
+      if (ticks) {
+        st->Sample = sample;
+        st->Ticktime = WinTimerClass::Now() + ticks;
+      }
+    }
+  }
+
+  bool Is_Sample_In_Cache(const void *sample)
+  {
+    unsigned long long now = WinTimerClass::Now();
+    for (short i = 0; i < MAX_SAMPLE_TIMES; i++) {
+      if (SampleTimes[i].Sample == sample && now <= SampleTimes[i].Ticktime) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+} SampleTimeCache;
+
 bool Is_Sample_Playing(void const* sample)
 {
-    /* Don't implement that.  It is called constantly and may flood the ARM7
-       with messages more than we already is.  */
-    return false;
+  if (sample)
+    return SampleTimeCache.Is_Sample_In_Cache(sample);
+  return false;
 };
 
 /* Stop a sample that is playing.  We just pass that to the ARM7...  */
@@ -403,6 +476,10 @@ int Play_Sample(void const* sample, int priority, int volume, signed short panlo
 {
     u16 handle = Get_Next_Handle();
     USR1::FifoMessage msg;
+
+    // Do not bother registering the time of low prio samples.
+    if (priority >= 254)
+      SampleTimeCache.Insert_Sample(sample);
 
     // We set the samples volume by actually lowering the volume argument
     // passed to the ARM7.
