@@ -707,11 +707,10 @@ public:
           //u32 start = cpuGetTiming();
 
           short dst_unalign = (uintptr_t)(dst_ptr) & 1;
-                             
 
           for (short i = 0; i < h; i++) {
             short size = w;
-            
+
             unsigned short *dst16 = (unsigned short *) dst_ptr;
             unsigned char *src8 = (unsigned char *) src_ptr;
 
@@ -728,10 +727,10 @@ public:
               src8 += 2;
             }
 
-            if (w & 1)
+            if (size & 1)
               *dst16 = (*dst16 &~ 0xFF) | *src8;
-            
-            
+
+
             dst_ptr += dst_pitch;
             src_ptr += src_pitch;
           }
