@@ -216,7 +216,11 @@ public:
             OBJECT_HEIGHT = 24,        // Pixel height of each buildable object.
             OBJECT_WIDTH = 32,         // Pixel width of each buildable object.
             STRIP_WIDTH = 35,          // Width of strip (not counting border lines).
+#ifdef DS_RADAR_UPSCREEN
+            MAX_VISIBLE = 7,           // Number of object slots visible at any one time.
+#else
             MAX_VISIBLE = 4,           // Number of object slots visible at any one time.
+#endif
             SCROLL_RATE = 8,           // The pixel jump while scrolling (larger is faster).
             BUTTON_SPACING_OFFSET = 4, // spacing info for buttons
             UP_X_OFFSET = 2,           // Scroll up arrow coordinates.

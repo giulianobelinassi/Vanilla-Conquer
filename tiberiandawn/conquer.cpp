@@ -207,6 +207,7 @@ void Main_Game(int argc, char* argv[])
             */
             if (!Debug_Map) {
                 TotalLocks = 0;
+
                 if (Main_Loop()) {
                     break;
                 }
@@ -328,6 +329,10 @@ void Main_Game(int argc, char* argv[])
         */
         Fade_Palette_To(BlackPalette, FADE_PALETTE_SLOW, NULL);
         VisiblePage.Clear();
+#ifdef DS_RADAR_UPSCREEN
+        void Clumsy_Upperscreen_Menu();
+        Clumsy_Upperscreen_Menu();
+#endif
 
 #ifndef DEMO
         /*

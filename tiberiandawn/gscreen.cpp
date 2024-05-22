@@ -472,6 +472,9 @@ void GScreenClass::Blit_Display(void)
 #else //(0)
     WWMouse->Draw_Mouse(&HidPage);
     HidPage.Blit(SeenBuff, 0, 0, 0, 0, HidPage.Get_Width(), HidPage.Get_Height(), false);
+#ifdef DS_RADAR_UPSCREEN
+    UpperHiddenPage.Blit(UpperVisiblePage, 0, 0, 0, 0, UpperHiddenPage.Get_Width(), UpperHiddenPage.Get_Height(), false);
+#endif
 #ifdef CHEAT_KEYS
     Add_Current_Screen();
 #endif

@@ -133,7 +133,11 @@ void PowerClass::One_Time(void)
     if (factor) {
         PowY = Map.RadY + Map.RadHeight + (13 << factor) - 4;
     } else {
+#ifdef DS_RADAR_UPSCREEN
+        PowY = Map.Get_Tab_Height() + 12;
+#else
         PowY = Map.RadY + Map.RadHeight + (13 << factor);
+#endif
     }
     PowWidth = 8 << factor;
     PowHeight = SeenBuff.Get_Height() - PowY;
@@ -214,8 +218,12 @@ void PowerClass::Draw_It(bool complete)
                     int x1 = x0 + 7;
                     int y0 = PowY + 1;
                     int y1 = bottom;
-
+#ifdef DS_RADAR_UPSCREEN
+                    LogicPage->Fill_Rect(x0, y0-1, x1, y1, LTGREY);               //Inside power bar
+#else
                     LogicPage->Fill_Rect(x0, y0, x1, y1, LTGREY);               //Inside power bar
+#endif
+
                     LogicPage->Draw_Line(x0, y0, x0, y1, WHITE);                //Left line
                     LogicPage->Draw_Line(x0 + 1, y0, x0 + 1, y1, GREY);         //Left shadow line
                     LogicPage->Draw_Line(x0, y0, x1 - 1, y0, WHITE);            //Upper line

@@ -437,6 +437,65 @@ int Do_Menu(char const** strings, bool blue)
 }
 #endif
 
+#ifdef DS_RADAR_UPSCREEN
+void Clumsy_Upperscreen_Menu(void)
+{
+      GraphicViewPortClass *old;
+      old = Set_Logic_Page(UpperHidBuff);
+      Set_Upperscreen_DD_Palette(MFCD::Retrieve("TEMPERAT.PAL"));
+
+      unsigned char *buffer = (unsigned char *) UpperHidBuff.Get_Graphic_Buffer()->Get_Buffer();
+
+      memset(buffer, LTGREY, 256*160);
+
+      for (int y = 0; y < 160; y++) {
+          for (int x = 0; x < 256; x++) {
+            if (Random_Pick(0, 20) == 0) {
+                buffer[256 * y + x] = DKGREY;
+            }
+          }
+      }
+
+      int l = 10;
+      for (int x = -l; x <= l; x++) {
+          int color = (abs(x) == l || x == 0) ? DKGREY : BLACK;
+
+          UpperHidBuff.Draw_Line(128 + x, 0, 128 + x, 20, color);
+          UpperHidBuff.Draw_Line(128 + x, 21, 152 + x, 40, color);
+          UpperHidBuff.Draw_Line(152 + x, 41, 152 + x, 60, color);
+          UpperHidBuff.Draw_Line(152 + x, 61, 128 + x, 80, color);
+          UpperHidBuff.Draw_Line(128 + x, 81, 104 + x, 100, color);
+          UpperHidBuff.Draw_Line(104 + x, 101, 104 + x, 120, color);
+          UpperHidBuff.Draw_Line(104 + x, 121, 128 + x, 140, color);
+          UpperHidBuff.Draw_Line(128 + x, 141, 128 + x, 160, color);
+      }
+
+
+      for (int y = 0; y < 160; y++) {
+          for (int x = 104 - l; x <= 152 + l; x++) {
+            if (buffer[256 * y + x] == BLACK) {
+              if ((10*x + 12*y + 50) % 200 < 100) {
+                buffer[256 * y + x] = BLACK;
+              } else {
+                buffer[256 * y + x] = YELLOW;
+              }
+            }
+          }
+      }
+
+      const void *gdi = MFCD::Retrieve("RADAR.GDI");
+      const void *nod = MFCD::Retrieve("RADAR.NOD");
+
+      if (gdi && nod) {
+          CC_Draw_Shape(gdi, 0, 10, 8, WINDOW_MAIN, SHAPE_NORMAL);
+          CC_Draw_Shape(nod, 1, 166, 83, WINDOW_MAIN, SHAPE_NORMAL);
+      }
+      UpperHidBuff.Blit(UpperSeenBuff);
+
+      Set_Logic_Page(old);
+}
+#endif
+
 /***************************************************************************
  * Main_Menu -- Menu processing                                            *
  *                                                                         *
@@ -825,6 +884,10 @@ int Main_Menu(unsigned int timeout)
             Hide_Mouse();
             Blit_Hid_Page_To_Seen_Buff();
             Show_Mouse();
+
+#ifdef DS_RADAR_UPSCREEN
+            Clumsy_Upperscreen_Menu();
+#endif
 
             Set_Logic_Page(SeenBuff);
             startbtn.Draw_All();

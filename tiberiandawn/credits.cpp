@@ -88,6 +88,7 @@ void CreditClass::Graphic_Logic(bool forced)
 {
     int factor = Get_Resolution_Factor();
     int xx = SeenBuff.Get_Width() - (120 << factor);
+    int yy = 0;
     if (forced || IsToRedraw) {
 
         /*
@@ -117,8 +118,17 @@ void CreditClass::Graphic_Logic(bool forced)
             factor ? TPF_GREEN12_GRAD | TPF_CENTER | TPF_USE_GRAD_PAL : TPF_6PT_GRAD | TPF_CENTER | TPF_NOSHADOW;
         unsigned fore = factor ? 11 : WHITE;
 
+#ifdef DS_RADAR_UPSCREEN
+        GraphicViewPortClass* oldpage = Set_Logic_Page(UpperHidBuff);
+        xx = 256 - (80 / 2);
+        yy = 160 - 8;
+#endif
         TabClass::Draw_Credits_Tab();
-        Fancy_Text_Print("%ld", xx, 0, fore, TBLACK, flags, Current);
+        Fancy_Text_Print("%ld", xx, yy, fore, TBLACK, flags, Current);
+
+#ifdef DS_RADAR_UPSCREEN
+        Set_Logic_Page(oldpage);
+#endif
 
         IsToRedraw = false;
         IsAudible = false;

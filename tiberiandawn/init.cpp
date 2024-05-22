@@ -500,6 +500,11 @@ bool Init_Game(int, char*[])
         Blit_Hid_Page_To_Seen_Buff();
     }
 
+#ifdef DS_RADAR_UPSCREEN
+    void Clumsy_Upperscreen_Menu(void);
+    Clumsy_Upperscreen_Menu();
+#endif
+
     Hide_Mouse();
     Wait_Vert_Blank();
     if (!Special.IsFromInstall) {
@@ -525,6 +530,7 @@ bool Init_Game(int, char*[])
             }
         }
     }
+
     Call_Back();
 
     //	malloc(2);
@@ -1395,6 +1401,11 @@ bool Select_Game(bool fade)
             return (false);
         }
         CCDebugString("C&C95 - Scenario started OK.\n");
+
+#ifdef DS_RADAR_UPSCREEN
+        UpperSeenBuff.Clear();
+        UpperHidBuff.Fill_Rect(0, 0, 256, 160, GREY);
+#endif
     }
 
     /*

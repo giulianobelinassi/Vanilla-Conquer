@@ -23,7 +23,21 @@
   * into screen, with the consequence of losing a few lines.
   **/
 
-extern "C" void memcpy32(void* dst, const void* src, unsigned int wdcount);
+extern "C" {
+void memcpy32(void* dst, const void* src, unsigned int wdcount);
+void nocashWrite(const char *, int len);
+}
+
+void nocashPrintf(const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    char buf[128];
+    int len = vsnprintf(buf, 128, fmt, args);
+    va_end(args);
+    nocashWrite(buf, len);
+}
+
 void *tonccpy(void *dst, const void *src, size_t size);
 
 /* Function used to pause the console for debugging.  */
@@ -45,6 +59,7 @@ void DS_Pause(const char* format, ...)
 // Background 3 identifier. Set on video initialization, and used on the seen
 // surface buffer.
 static int bg3;
+static int bg3sub;
 
 // Mark the status of zoom. True means we are zoomed in, false means we are
 // zoomed out.
@@ -302,11 +317,53 @@ void On_VBlank()
     Timer_VBlank();
 }
 
-bool Set_Video_Mode(int w, int h, int bits_per_pixel)
+#ifdef DS_RADAR_UPSCREEN
+static void Initialize_Upper_Screen(void)
+{
+    // Allocate 128Kb for the console on the upper screen.
+    vramSetBankC(VRAM_C_SUB_BG_0x06200000);
+    videoSetModeSub(MODE_3_2D);
+
+    // Put pper screen into MODE5, which allows rotation and scaling on BG5
+    bg3sub = bgInitSub(3, BgType_Bmp8, BgSize_B8_256x256, 0, 0);
+
+    int scale_x = (256 * 256) / SCREEN_WIDTH;
+    int scale_y = (160 * 256) / SCREEN_HEIGHT;
+
+    bgSetRotateScale(bg3sub, 0, scale_x, scale_y);
+    bgSetScroll(bg3sub, 0, 0);
+
+    swiWaitForVBlank();
+    bgUpdate();
+
+    char *surface = (char *)bgGetGfxPtr(bg3sub);
+
+    for (int i = 0; i < 160; i++) {
+      for (int j = 0; j < 256; j++) {
+        if ((i + j) % 2 == 0)
+          surface[256 * i + j] = 98;
+      }
+    }
+}
+#else
+static void Initialize_Upper_Console(void)
 {
     // Allocate memory for our console.  This has to be static because it must
     // persists when this function exit, even if only used here.
     static PrintConsole cs0;
+
+    // Allocate 128Kb for the console on the upper screen.  It is a bit
+    // overkill, but we got plenty of VRAM so far so it is OK.
+    vramSetBankC(VRAM_C_SUB_BG_0x06200000);
+    videoSetModeSub(MODE_0_2D);
+
+    // Initialize the console on the top screen.
+    consoleInit(&cs0, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, false, true);
+}
+#endif
+
+bool Set_Video_Mode(int w, int h, int bits_per_pixel)
+{
 
     // Only turns on the 2D engine. The 3D chip is unused and disabling it
     // should save battery life.
@@ -315,15 +372,13 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     // If the ARM9 is set to 67MHz, set it to 133MHz now.
     setCpuClock(true);
 
-    // Allocate 128Kb for the console on the upper screen.  It is a bit
-    // overkill, but we got plenty of VRAM so far so it is OK.
-    vramSetBankC(VRAM_C_SUB_BG_0x06200000);
-    videoSetModeSub(MODE_0_2D);
+#ifdef DS_RADAR_UPSCREEN
+    Initialize_Upper_Screen();
+#else
+    Initialize_Upper_Console();
+#endif
 
     cpuStartTiming(0);
-
-    // Initialize the console on the top screen.
-    consoleInit(&cs0, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, false, true);
 
     // Setup what should run on a VBlank interrupt.
     irqSet(IRQ_VBLANK, On_VBlank);
@@ -470,6 +525,20 @@ void Set_DD_Palette(void* palette)
     HWCursor.Set_Cursor_Palette(BG_PALETTE);
 }
 
+void Set_Upperscreen_DD_Palette(const void *palette)
+{
+    unsigned char r, g, b;
+
+    unsigned char* rcolors = (unsigned char*)palette;
+    for (int i = 0; i < 256; i++) {
+        r = (unsigned char)rcolors[i * 3] << 2;
+        g = (unsigned char)rcolors[i * 3 + 1] << 2;
+        b = (unsigned char)rcolors[i * 3 + 2] << 2;
+
+        BG_PALETTE_SUB[i] = RGB8(r, g, b);
+    }
+}
+
 void Wait_Blit(void)
 {
 }
@@ -526,9 +595,6 @@ void Update_HWCursor()
 class VideoSurfaceNDS;
 static VideoSurfaceNDS* frontSurface = nullptr;
 
-// The hidden surface buffer.
-static char HidSurfaceBuf[320 * 200];
-
 #define ALIGNED(ptr, n) (((uintptr_t)(ptr) % (n)) == 0)
 
 class VideoSurfaceNDS : public VideoSurface
@@ -536,38 +602,39 @@ class VideoSurfaceNDS : public VideoSurface
 public:
     VideoSurfaceNDS(int w, int h, GBC_Enum flags)
         : flags(flags)
-        , windowSurface(nullptr)
     {
-        if (w == 320 && h == 200) {
+        if (flags & GBC_VISIBLE) {
+          if (flags & GBC_UPPERSCREEN) {
+            nocashWrite("Visible surface on upper screen\n", 100);
+            Pitch = w;
+            surface = (char*)bgGetGfxPtr(bg3sub);
+          } else {
             // The DS renderer works as follows: we pass the background
             // buffer in VRAM to the game's software engine, which draws
             // things there. The background is a 512x256 surface, but
             // only 512x200 pixels are used.
-
-            if (flags & GBC_VISIBLE) {
-                Pitch = 512;
-                surface = (char*)bgGetGfxPtr(bg3);
-                windowSurface = surface;
-                frontSurface = this;
-            } else {
-                // The hid surface will be allocated in main RAM. The game
-                // uses a software engine that memcpy the graphics, and in
-                // this case it is faster to allocate this in main RAM.
-                Pitch = 320;
-                surface = HidSurfaceBuf;
-            }
+            nocashWrite("Visible surface on botom screen\n", 100);
+            Pitch = 512;
+            surface = (char*)bgGetGfxPtr(bg3);
+            frontSurface = this;
+          }
         } else {
-            swiWaitForVBlank();
-            printf("ERROR - Unsupported surface size\n");
-            while (1)
-                ;
+            // The hid surface will be allocated in main RAM. The game
+            // uses a software engine that memcpy the graphics, and in
+            // this case it is faster to allocate this in main RAM.
+            Pitch = w;
+            surface = (char *)malloc(w*h);
+            nocashWrite("Hidden suface\n", 100);
         }
     }
 
     virtual ~VideoSurfaceNDS()
     {
-        if (frontSurface == this) {
-            frontSurface = NULL;
+        // Do not call free on surfaces that are allocated on VRAM.
+        if ((uintptr_t)surface < 0x06000000) {
+            // Deallocate surface in main RAM.
+            free(surface);
+            surface = NULL;
         }
     }
 
@@ -634,15 +701,13 @@ public:
         }
       } else {
         short dma = 0;
-        int flushrange = 320*(h - 1) + w;
 
         // Careful with alignment.
         if (ALIGNED(src_ptr, 4) && ALIGNED(dst_ptr, 4)) {
-          if (src_in_main_ram) {
-            DC_FlushRange(src_ptr, flushrange);
-          }
+          if (src_in_main_ram)
+            DC_FlushRange(src_ptr, src_pitch*(h - 1) + w);
           else if (dst_in_main_ram)
-            DC_FlushRange(dst_ptr, flushrange);
+            DC_FlushRange(dst_ptr, dst_pitch*(h - 1) + w);
 
           // Unroll iterations:
           short h_div = h / 4;
@@ -673,9 +738,9 @@ public:
         } else if (ALIGNED(src_ptr, 2) && ALIGNED(dst_ptr, 2)) {
 
           if (src_in_main_ram)
-            DC_FlushRange(src_ptr, flushrange);
+            DC_FlushRange(src_ptr, src_pitch*(h - 1) + w);
           else if (dst_in_main_ram)
-            DC_FlushRange(dst_ptr, flushrange);
+            DC_FlushRange(dst_ptr, dst_pitch*(h - 1) + w);
 
           // Unroll iterations:
           short h_div = h / 4;
@@ -816,7 +881,6 @@ public:
 private:
     int Pitch;
     char* surface;
-    char* windowSurface;
     GBC_Enum flags;
 };
 

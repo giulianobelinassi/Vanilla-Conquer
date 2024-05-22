@@ -77,6 +77,9 @@
 #include "function.h"
 #include "settings.h"
 
+extern GraphicViewPortClass SeenBuff;
+extern GraphicViewPortClass HidPage;
+
 /*
 **	Define "_RETRIEVE" if the palette morphing tables are part of the loaded data. If this
 **	is undefined, then the files will be created.
@@ -179,10 +182,14 @@ void SidebarClass::One_Time(void)
     int factor = (SeenBuff.Get_Width() == 320) ? 1 : 2;
     SideBarWidth = SIDEBARWIDTH * factor;
     SideX = SeenBuff.Get_Width() - SideBarWidth;
+#ifdef DS_RADAR_UPSCREEN
+    SideY = Map.Get_Tab_Height();
+#else
     SideY = Map.RadY + Map.RadHeight + 1;
+#endif
     SideWidth = SeenBuff.Get_Width() - SideX;
     SideHeight = SeenBuff.Get_Height() - SideY;
-    MaxVisible = 4;
+    MaxVisible = StripClass::MAX_VISIBLE;
     ButtonHeight = 9 * factor;
     TopHeight = ButtonHeight + (4 * factor);
 
@@ -382,6 +389,11 @@ void SidebarClass::Init_IO(void)
             Zoom->Y = Upgrade->Y;
             Zoom->Width = 20;
             Zoom->Height = Upgrade->Height;
+#ifdef DS_RADAR_UPSCREEN
+            Repair->Y = 10;
+            Upgrade->Y = 10;
+            Zoom->Y = 10;
+#endif
         }
 
         Repair->IsSticky = true;
@@ -1012,7 +1024,11 @@ bool SidebarClass::Activate(int control)
     bool old = IsSidebarActive;
 
     int sidex = SeenBuff.Get_Width() - SideBarWidth;
+#ifdef DS_RADAR_UPSCREEN
+    int sidey = Map.Get_Tab_Height() + Map.RadHeight;
+#else
     int sidey = Map.RadY + Map.RadHeight;
+#endif
     int topheight = 13;
     int sidewidth = SeenBuff.Get_Width() - sidex;
     int sideheight = SeenBuff.Get_Height() - sidey;

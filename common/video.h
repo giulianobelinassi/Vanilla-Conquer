@@ -9,6 +9,9 @@ enum GBC_Enum
     GBC_NONE = 0,
     GBC_VIDEOMEM = 1,
     GBC_VISIBLE = 2,
+#ifdef _NDS
+    GBC_UPPERSCREEN = 4,
+#endif
 };
 
 class VideoSurface;
@@ -105,5 +108,7 @@ unsigned Get_Video_Hardware_Capabilities();
 
 void Wait_Vert_Blank();
 void Set_DD_Palette(void* palette);
-
+#ifdef DS_RADAR_UPSCREEN
+void Set_DD_Upscreen_Palette(const void *palette);
+#endif
 #endif // VIDEO_H

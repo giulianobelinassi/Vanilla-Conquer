@@ -853,6 +853,13 @@ int MenuList[][8] = {
 GraphicBufferClass VisiblePage;
 GraphicBufferClass HiddenPage;
 
+#ifdef DS_RADAR_UPSCREEN
+GraphicBufferClass UpperVisiblePage;
+GraphicBufferClass UpperHiddenPage;
+GraphicViewPortClass UpperHidBuff(&UpperHiddenPage, 0, 0, 256, 160);
+GraphicViewPortClass UpperSeenBuff(&UpperVisiblePage, 0, 0, 256, 160);
+#endif
+
 GraphicViewPortClass SeenBuff(&VisiblePage, 0, 0, GBUFF_INIT_WIDTH, GBUFF_INIT_HEIGHT);
 GraphicBufferClass ModeXBuff;
 GraphicViewPortClass HidPage(&HiddenPage, 0, 0, GBUFF_INIT_WIDTH, GBUFF_INIT_HEIGHT);

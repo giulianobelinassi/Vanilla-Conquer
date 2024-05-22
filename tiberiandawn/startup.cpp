@@ -391,6 +391,13 @@ int main(int argc, char** argv)
         SeenBuff.Attach(&VisiblePage, 0, 0, GBUFF_INIT_WIDTH, GBUFF_INIT_HEIGHT);
         HidPage.Attach(&HiddenPage, 0, 0, GBUFF_INIT_WIDTH, GBUFF_INIT_HEIGHT);
 
+#ifdef DS_RADAR_UPSCREEN
+        UpperVisiblePage.Init(256, 160, NULL, 0, (GBC_Enum)(GBC_VISIBLE | GBC_VIDEOMEM | GBC_UPPERSCREEN));
+        UpperHiddenPage.Init(256, 160, NULL, 0, (GBC_Enum)(GBC_UPPERSCREEN));
+        UpperSeenBuff.Attach(&UpperVisiblePage, 0, 0, 256, 160);
+        UpperHidBuff.Attach(&UpperHiddenPage, 0, 0, 256, 160);
+#endif
+
         CCDebugString("C&C95 - Adjusting variables for resolution.\n");
         Options.Adjust_Variables_For_Resolution();
 

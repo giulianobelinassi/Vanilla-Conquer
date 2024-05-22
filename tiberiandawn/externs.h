@@ -385,6 +385,15 @@ extern GraphicBufferClass ModeXBuff;
 extern GraphicViewPortClass HidPage;
 extern GraphicBufferClass LoResHidPage;
 extern GraphicBufferClass SysMemPage;
+#ifdef DS_RADAR_UPSCREEN
+extern GraphicBufferClass UpperVisiblePage;
+extern GraphicBufferClass UpperHiddenPage;
+extern GraphicViewPortClass UpperHidBuff;
+extern GraphicViewPortClass UpperSeenBuff;
+
+extern void Set_Upperscreen_DD_Palette(const void *palette);
+
+#endif
 extern int MenuList[][8];
 extern CountDownTimerClass FrameTimer;
 extern CountDownTimerClass CountDownTimer;

@@ -127,8 +127,13 @@ void RadarClass::One_Time(void)
     int factor = Get_Resolution_Factor();
     RadWidth = 80 << factor;
     RadHeight = 70 << factor;
+#ifdef DS_RADAR_UPSCREEN
+    RadX = (UpperSeenBuff.Get_Width() - RadWidth) / 2;
+    RadY = (UpperSeenBuff.Get_Height() - RadHeight) / 2;
+#else
     RadX = SeenBuff.Get_Width() - RadWidth;
     RadY = Map.Get_Tab_Height() - (1 << factor);
+#endif
     RadPWidth = MAP_CELL_W << factor;
     RadPHeight = MAP_CELL_H << factor;
 
@@ -351,22 +356,34 @@ void RadarClass::Draw_It(bool forced)
         _house = PlayerPtr->ActLike;
     }
 
+#ifdef DS_RADAR_UPSCREEN
+    GraphicViewPortClass* oldpage = Set_Logic_Page(UpperHidBuff);
+#endif
+
     /*
     ** If in player name mode, just draw player names
     */
     if (IsPlayerNames) {
         Draw_Names();
         IsToRedraw = false;
+#ifdef DS_RADAR_UPSCREEN
+        Set_Logic_Page(oldpage);
+#endif
         return;
     }
 
     if (IsRadarActivating || IsRadarDeactivating) {
         Radar_Anim();
         IsToRedraw = false;
+#ifdef DS_RADAR_UPSCREEN
+        Set_Logic_Page(oldpage);
+#endif
         return;
     }
 
+#ifndef DS_RADAR_UPSCREEN
     if (Map.IsSidebarActive) {
+#endif
         if (IsRadarActive) {
 
             // HidPage.Lock();
@@ -425,8 +442,13 @@ void RadarClass::Draw_It(bool forced)
                 Radar_Cursor(RadarCursorRedraw);
 
             } else {
+#ifdef DS_RADAR_UPSCREEN
+                GraphicViewPortClass* oldpage = Set_Logic_Page(UpperHidBuff);
+#else
                 GraphicViewPortClass* oldpage = Set_Logic_Page(HidPage);
+#endif
                 //				if (LogicPage->Lock()) {
+
                 CC_Draw_Shape(RadarAnim, RADAR_ACTIVATED_FRAME, RadX, RadY + 1, WINDOW_MAIN, SHAPE_NORMAL);
                 if (BaseX || BaseY) {
                     LogicPage->Fill_Rect(RadX + RadOffX,
@@ -454,7 +476,11 @@ void RadarClass::Draw_It(bool forced)
                 LogicPage->Unlock();
                 if (oldpage == &SeenBuff) {
                     Hide_Mouse();
+#ifdef DS_RADAR_UPSCREEN
+                    LogicPage->Blit(UpperSeenBuff, RadX, RadY, RadX, RadY, RadWidth, RadHeight);
+#else
                     LogicPage->Blit(SeenBuff, RadX, RadY, RadX, RadY, RadWidth, RadHeight);
+#endif
                     Show_Mouse();
                 }
 
@@ -470,15 +496,27 @@ void RadarClass::Draw_It(bool forced)
             */
             //			if (forced) {
             int val = (DoesRadarExist) ? MAX_RADAR_FRAMES : 0;
+
+#ifdef DS_RADAR_UPSCREEN
+            GraphicViewPortClass* oldpage = Set_Logic_Page(UpperHidBuff);
+#endif
             CC_Draw_Shape(RadarAnim, val, RadX, RadY + 1, WINDOW_MAIN, SHAPE_NORMAL);
             FullRedraw = false;
             IsToRedraw = false;
+
+#ifdef DS_RADAR_UPSCREEN
+            Set_Logic_Page(oldpage);
+#endif
             //			}
         }
 
         // HidPage.Unlock();
         //		Map.Activator.Draw_Me(true);
+#ifndef DS_RADAR_UPSCREEN
     }
+#else
+    Set_Logic_Page(oldpage);
+#endif
 #endif
 }
 
@@ -910,6 +948,10 @@ void RadarClass::Radar_Pixel(CELL cell)
  *=============================================================================================*/
 int RadarClass::Click_In_Radar(int& ptr_x, int& ptr_y, bool change)
 {
+#ifdef DS_RADAR_UPSCREEN
+    return 0;
+#endif
+
     int x = ptr_x;
     int y = ptr_y;
 
@@ -1187,7 +1229,11 @@ void RadarClass::Radar_Cursor(int forced)
     ** setup a graphic view port class so we can write all the pixels relative
     ** to 0,0 rather than relative to full screen coordinates.
     */
+#ifdef DS_RADAR_UPSCREEN
+    oldpage = Set_Logic_Page(UpperHidBuff);
+#else
     oldpage = Set_Logic_Page(HidPage);
+#endif
     GraphicViewPortClass draw_window(LogicPage->Get_Graphic_Buffer(),
                                      RadX + RadOffX + BaseX + LogicPage->Get_XPos(),
                                      RadY + RadOffY + BaseY + LogicPage->Get_YPos(),
@@ -1257,8 +1303,11 @@ void RadarClass::Radar_Anim(void)
 
     if (!Map.IsSidebarActive)
         return;
-
+#ifdef DS_RADAR_UPSCREEN
+    GraphicViewPortClass* oldpage = Set_Logic_Page(UpperHidBuff);
+#else
     GraphicViewPortClass* oldpage = Set_Logic_Page(HidPage);
+#endif
     GraphicViewPortClass draw_window(LogicPage->Get_Graphic_Buffer(),
                                      RadX + RadOffX + LogicPage->Get_XPos(),
                                      RadY + RadOffY + LogicPage->Get_YPos(),
@@ -1367,6 +1416,10 @@ int RadarClass::TacticalClass::Action(unsigned flags, KeyNumType& key)
     bool shadow;                     // is the cell in shadow or not
     ObjectClass* object = 0;         // what object is in the cell
     ActionType action = ACTION_NONE; // Action possible with currently selected object.
+
+#ifdef DS_RADAR_UPSCREEN
+    return false; // Clicking on map is not possible on upper screen.
+#endif
 
     /*
     **	Force any help label to disappear when the mouse is held over the
@@ -1622,35 +1675,47 @@ void RadarClass::Set_Radar_Position(CELL cell)
                 /*
                 ** Blit the section that is actually overlapping.
                 */
+
+#ifdef DS_RADAR_UPSCREEN
+                UpperSeenBuff.Blit(UpperHiddenPage,
+                         (((radx < 0) ? -radx : 0) * ZoomFactor) + RadX + RadOffX + BaseX,
+                         (((rady < 0) ? -rady : 0) * ZoomFactor) + RadY + RadOffY + BaseY,
+                         (((radx < 0) ? 0 : radx) * ZoomFactor) + RadX + RadOffX + BaseX,
+                         (((rady < 0) ? 0 : rady) * ZoomFactor) + RadY + RadOffY + BaseY,
+                         radw * ZoomFactor,
+                         radh * ZoomFactor);
+#else
                 if (OverlappedVideoBlits || !HidPage.Get_IsDirectDraw()) {
-                    HidPage.Blit(HidPage,
-                                 (((radx < 0) ? -radx : 0) * ZoomFactor) + RadX + RadOffX + BaseX,
-                                 (((rady < 0) ? -rady : 0) * ZoomFactor) + RadY + RadOffY + BaseY,
-                                 (((radx < 0) ? 0 : radx) * ZoomFactor) + RadX + RadOffX + BaseX,
-                                 (((rady < 0) ? 0 : rady) * ZoomFactor) + RadY + RadOffY + BaseY,
-                                 radw * ZoomFactor,
-                                 radh * ZoomFactor);
+                    GraphicViewPortClass &Hid = HidPage;
+                    Hid.Blit(Hid,
+                             (((radx < 0) ? -radx : 0) * ZoomFactor) + RadX + RadOffX + BaseX,
+                             (((rady < 0) ? -rady : 0) * ZoomFactor) + RadY + RadOffY + BaseY,
+                             (((radx < 0) ? 0 : radx) * ZoomFactor) + RadX + RadOffX + BaseX,
+                             (((rady < 0) ? 0 : rady) * ZoomFactor) + RadY + RadOffY + BaseY,
+                             radw * ZoomFactor,
+                             radh * ZoomFactor);
                 } else {
                     /*
                     ** System does not support overlapped blitting of video surfaces.
                     ** Blit it in 2 stages using an intermediate buffer.
                     */
                     GraphicBufferClass temp_surface;
+                    GraphicViewPortClass &Hid = HidPage;
                     temp_surface.Init((RadarWidth + 16) & 0xfffffff0,
                                       (RadarHeight + 16) & 0xfffffff0,
                                       NULL,
                                       0,
                                       (GBC_Enum)GBC_VIDEOMEM);
 
-                    HidPage.Blit(temp_surface,
-                                 (((radx < 0) ? -radx : 0) * ZoomFactor) + RadX + RadOffX + BaseX,
-                                 (((rady < 0) ? -rady : 0) * ZoomFactor) + RadY + RadOffY + BaseY,
-                                 0,
-                                 0,
-                                 RadarWidth,
-                                 RadarHeight);
+                    Hid.Blit(temp_surface,
+                             (((radx < 0) ? -radx : 0) * ZoomFactor) + RadX + RadOffX + BaseX,
+                             (((rady < 0) ? -rady : 0) * ZoomFactor) + RadY + RadOffY + BaseY,
+                             0,
+                             0,
+                             RadarWidth,
+                             RadarHeight);
 
-                    temp_surface.Blit(HidPage,
+                    temp_surface.Blit(Hid,
                                       0,
                                       0,
                                       (((radx < 0) ? 0 : radx) * ZoomFactor) + RadX + RadOffX + BaseX,
@@ -1658,7 +1723,7 @@ void RadarClass::Set_Radar_Position(CELL cell)
                                       radw * ZoomFactor,
                                       radh * ZoomFactor);
                 }
-
+#endif
                 /*
                 ** Now we need to flag the section of the map that is going to redraw.
                 */
@@ -1863,9 +1928,16 @@ void RadarClass::Draw_Names(void)
     /*
     ** Do nothing if the sidebar isn't there
     */
+
+#ifndef DS_RADAR_UPSCREEN
     if (!Map.IsSidebarActive) {
         return;
     }
+#endif
+
+#ifdef DS_RADAR_UPSCREEN
+    GraphicViewPortClass* oldpage = Set_Logic_Page(UpperHidBuff);
+#endif
 
     CC_Draw_Shape(RadarAnim, RADAR_ACTIVATED_FRAME, RadX, RadY + 1, WINDOW_MAIN, SHAPE_NORMAL);
     LogicPage->Fill_Rect(
@@ -1954,4 +2026,8 @@ void RadarClass::Draw_Names(void)
             y += 6 * factor + 1;
         }
     }
+
+#ifdef DS_RADAR_UPSCREEN
+    Set_Logic_Page(oldpage);
+#endif
 }

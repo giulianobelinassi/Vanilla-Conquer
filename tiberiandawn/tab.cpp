@@ -110,7 +110,7 @@ void TabClass::Draw_It(bool complete)
                 LogicPage->Fill_Rect(0, 0, rightx, Tab_Height - 2, BLACK);
                 CC_Draw_Shape(TabShape, 0, 0, 0, WINDOW_MAIN, SHAPE_NORMAL);
                 CC_Draw_Shape(TabShape, 0, width - Eva_Width, 0, WINDOW_MAIN, SHAPE_NORMAL);
-                Draw_Credits_Tab();
+                //Draw_Credits_Tab(); // Why is this here?
                 LogicPage->Draw_Line(0, Tab_Height - 1, rightx, Tab_Height - 1, BLACK);
 
                 Fancy_Text_Print(TXT_TAB_BUTTON_CONTROLS, Eva_Width / 2, 0, fore, TBLACK, flags);
@@ -127,8 +127,13 @@ void TabClass::Draw_It(bool complete)
 
 void TabClass::Draw_Credits_Tab(void)
 {
+#ifdef DS_RADAR_UPSCREEN
+    unsigned x = 256 - 80;
+    CC_Draw_Shape(TabShape, 0, x, 160 - 8, WINDOW_MAIN, SHAPE_NORMAL);
+#else
     unsigned x = Get_Resolution_Factor() ? 320 : 160;
     CC_Draw_Shape(TabShape, 0, x, 0, WINDOW_MAIN, SHAPE_NORMAL);
+#endif
 }
 
 /***********************************************************************************************
