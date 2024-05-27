@@ -111,7 +111,7 @@ vanilla-conquer/
 ### Retail Game
 
 Download both [Allies](https://bigdownloads.cnc-comm.com/ra/RA_Allies.zip) and
-[Soviet](https://bigdownloads.cnc-comm.com/ra/RA_Allies.zip) discs.
+[Soviet](https://bigdownloads.cnc-comm.com/ra/RA_Soviet.zip) discs.
 
 On the root of your SD card, create the folder `/vanilla-conquer/vanillara/`.
 Then create two more directories: `allied` and `soviet`.
