@@ -34,6 +34,13 @@
 #ifndef WSPROTO_H
 #define WSPROTO_H
 
+#if !defined _WIN32 || defined SDL2_BUILD
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
+
 #include "vector.h"
 #include "ipxaddr.h"
 

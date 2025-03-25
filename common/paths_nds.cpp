@@ -43,6 +43,12 @@ const char* basename(const char* path)
 
     return path;
 }
+
+int nanosleep(const struct timespec *, struct timespec *rem)
+{
+  return 0;
+}
+
 }
 
 void Set_Video_Mode(int, int, int);

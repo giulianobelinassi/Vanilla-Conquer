@@ -5,7 +5,7 @@ set(CMAKE_C_FLAGS "${ARCH} -g -fomit-frame-pointer -fno-rtti -fno-exceptions -ff
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS}")
 SET(CMAKE_CXX_FLAGS_DEBUG "-Os -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-Os")
-set(CMAKE_EXE_LINKER_FLAGS "-specs=ds_arm7.specs -mthumb -mthumb-interwork  -Wl,-Map,vanilla.map")
+set(CMAKE_EXE_LINKER_FLAGS "-specs=${ARM7SPEC} -mthumb -mthumb-interwork  -Wl,-Map,vanilla.map")
 
 set(ARM7_SRC
     main.cpp
